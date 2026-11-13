@@ -1,0 +1,123 @@
+SET NAMES utf8mb4;
+
+SET @service_price_check_exists = (
+  SELECT COUNT(*)
+  FROM information_schema.TABLE_CONSTRAINTS
+  WHERE CONSTRAINT_SCHEMA = DATABASE()
+    AND TABLE_NAME = 'servicio'
+    AND CONSTRAINT_NAME = 'chk_servicio_precio'
+);
+SET @service_price_check_sql = IF(
+  @service_price_check_exists = 0,
+  'ALTER TABLE servicio ADD CONSTRAINT chk_servicio_precio CHECK (precio > 0)',
+  'SELECT 1'
+);
+PREPARE service_price_check_statement FROM @service_price_check_sql;
+EXECUTE service_price_check_statement;
+DEALLOCATE PREPARE service_price_check_statement;
+
+SET @review_stars_check_exists = (
+  SELECT COUNT(*)
+  FROM information_schema.TABLE_CONSTRAINTS
+  WHERE CONSTRAINT_SCHEMA = DATABASE()
+    AND TABLE_NAME = 'calificacion'
+    AND CONSTRAINT_NAME = 'chk_calificacion_estrellas'
+);
+SET @review_stars_check_sql = IF(
+  @review_stars_check_exists = 0,
+  'ALTER TABLE calificacion ADD CONSTRAINT chk_calificacion_estrellas CHECK (estrellas BETWEEN 1 AND 5)',
+  'SELECT 1'
+);
+PREPARE review_stars_check_statement FROM @review_stars_check_sql;
+EXECUTE review_stars_check_statement;
+DEALLOCATE PREPARE review_stars_check_statement;
+
+UPDATE categoria
+SET nombre = CONVERT(0x506C6F6D6572C3AD61 USING utf8mb4)
+WHERE BINARY nombre IN (
+  CONVERT(0x506C6F6D6572C383C2AD61 USING utf8mb4),
+  CONVERT(0x506C6F6D65723F3F61 USING utf8mb4)
+);
+
+SET @broken_plumbing_category_id = (
+  SELECT id
+  FROM categoria
+  WHERE BINARY nombre = CONVERT(0x506C6F6D6572E2949CC2A161 USING utf8mb4)
+  LIMIT 1
+);
+SET @canonical_plumbing_category_id = (
+  SELECT id
+  FROM categoria
+  WHERE BINARY nombre = CONVERT(0x506C6F6D6572C3AD61 USING utf8mb4)
+  LIMIT 1
+);
+
+UPDATE servicio
+SET categoria_id = @canonical_plumbing_category_id
+WHERE @broken_plumbing_category_id IS NOT NULL
+  AND @canonical_plumbing_category_id IS NOT NULL
+  AND categoria_id = @broken_plumbing_category_id;
+
+DELETE FROM categoria
+WHERE id = @broken_plumbing_category_id
+  AND @canonical_plumbing_category_id IS NOT NULL;
+
+UPDATE categoria
+SET nombre = CONVERT(0x506C6F6D6572C3AD61 USING utf8mb4)
+WHERE id = @broken_plumbing_category_id
+  AND @canonical_plumbing_category_id IS NULL;
+
+UPDATE usuario
+SET nombre = CONVERT(0x4D6172C3AD61 USING utf8mb4)
+WHERE email = 'maria@oficioclick.com'
+  AND BINARY nombre IN (
+    CONVERT(0x4D6172C383C2AD61 USING utf8mb4),
+    CONVERT(0x4D61723F3F61 USING utf8mb4)
+  );
+
+UPDATE usuario
+SET apellido = CONVERT(0x47C3B36D657A USING utf8mb4)
+WHERE email = 'maria@oficioclick.com'
+  AND BINARY apellido IN (
+    CONVERT(0x47C383C2B36D657A USING utf8mb4),
+    CONVERT(0x473F3F6D657A USING utf8mb4)
+  );
+
+UPDATE usuario
+SET apellido = CONVERT(0x52C3AD6F73 USING utf8mb4)
+WHERE email = 'ana@oficioclick.com'
+  AND BINARY apellido IN (
+    CONVERT(0x52C383C2AD6F73 USING utf8mb4),
+    CONVERT(0x523F3F6F73 USING utf8mb4)
+  );
+
+UPDATE usuario
+SET apellido = CONVERT(0x50C3A972657A USING utf8mb4)
+WHERE email = 'carlos@oficioclick.com'
+  AND BINARY apellido IN (
+    CONVERT(0x50C383C2A972657A USING utf8mb4),
+    CONVERT(0x503F3F72657A USING utf8mb4)
+  );
+
+UPDATE servicio
+SET titulo = CONVERT(0x5265706172616369C3B36E206465206675676173 USING utf8mb4),
+    descripcion = CONVERT(0x536F6C756369C3B36E2072C3A17069646120646520667567617320656E20636F63696E612C206261C3B16F2079207475626572C3AD61732E USING utf8mb4)
+WHERE BINARY titulo IN (
+  CONVERT(0x5265706172616369C383C2B36E206465206675676173 USING utf8mb4),
+  CONVERT(0x52657061726163693F3F6E206465206675676173 USING utf8mb4)
+);
+
+UPDATE servicio
+SET titulo = CONVERT(0x496E7374616C616369C3B36E20656CC3A9637472696361207265736964656E6369616C USING utf8mb4),
+    descripcion = CONVERT(0x496E7374616C616369C3B36E207920726576697369C3B36E206465206C756D696E61726961732C20656E636875666573207920636972637569746F732E USING utf8mb4)
+WHERE BINARY titulo IN (
+  CONVERT(0x496E7374616C616369C383C2B36E20656CC383C2A9637472696361207265736964656E6369616C USING utf8mb4),
+  CONVERT(0x496E7374616C6163693F3F6E20656C3F3F637472696361207265736964656E6369616C USING utf8mb4)
+);
+
+UPDATE servicio
+SET titulo = CONVERT(0x50696E747572612079207265706172616369C3B36E2064652070617265646573 USING utf8mb4)
+WHERE BINARY titulo IN (
+  CONVERT(0x50696E747572612079207265706172616369C383C2B36E2064652070617265646573 USING utf8mb4),
+  CONVERT(0x50696E7475726120792072657061726163693F3F6E2064652070617265646573 USING utf8mb4)
+);

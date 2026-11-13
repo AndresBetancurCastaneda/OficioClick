@@ -1,3 +1,5 @@
+SET NAMES utf8mb4;
+
 CREATE DATABASE IF NOT EXISTS `oficioclick` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 USE `oficioclick`;
 
@@ -49,6 +51,7 @@ CREATE TABLE IF NOT EXISTS `servicio` (
   PRIMARY KEY (`id`),
   KEY `idx_servicio_trabajador` (`trabajador_id`),
   KEY `idx_servicio_categoria` (`categoria_id`),
+  CONSTRAINT `chk_servicio_precio` CHECK (`precio` > 0),
   CONSTRAINT `fk_servicio_trabajador` FOREIGN KEY (`trabajador_id`) REFERENCES `usuario` (`id`),
   CONSTRAINT `fk_servicio_categoria` FOREIGN KEY (`categoria_id`) REFERENCES `categoria` (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
@@ -80,6 +83,7 @@ CREATE TABLE IF NOT EXISTS `calificacion` (
   UNIQUE KEY `uq_calificacion_reserva` (`reserva_id`),
   KEY `idx_calificacion_cliente` (`cliente_id`),
   KEY `idx_calificacion_trabajador` (`trabajador_id`),
+  CONSTRAINT `chk_calificacion_estrellas` CHECK (`estrellas` BETWEEN 1 AND 5),
   CONSTRAINT `fk_calificacion_reserva` FOREIGN KEY (`reserva_id`) REFERENCES `reserva` (`id`),
   CONSTRAINT `fk_calificacion_cliente` FOREIGN KEY (`cliente_id`) REFERENCES `usuario` (`id`),
   CONSTRAINT `fk_calificacion_trabajador` FOREIGN KEY (`trabajador_id`) REFERENCES `usuario` (`id`)
