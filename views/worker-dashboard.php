@@ -97,17 +97,22 @@
                                     <td><?php echo e($reservation['fecha']); ?> - <?php echo e($reservation['hora']); ?></td>
                                     <td><span class="status-badge status-<?php echo e(strtolower($reservation['estado'])); ?>"><?php echo e($reservation['estado']); ?></span></td>
                                     <td>
+                                        <?php if (in_array($reservation['estado'], ['pendiente', 'confirmada'], true)): ?>
                                         <form method="post" action="index.php" class="inline-form compact-inline">
                                             <input type="hidden" name="action" value="update-reservation-status">
                                             <input type="hidden" name="reservation_id" value="<?php echo (int) $reservation['id']; ?>">
                                             <select name="status" class="compact-select">
-                                                <option value="pendiente" <?php echo ($reservation['estado'] === 'pendiente') ? 'selected' : ''; ?>>Pendiente</option>
-                                                <option value="confirmada" <?php echo ($reservation['estado'] === 'confirmada') ? 'selected' : ''; ?>>Confirmada</option>
-                                                <option value="finalizada" <?php echo ($reservation['estado'] === 'finalizada') ? 'selected' : ''; ?>>Finalizada</option>
-                                                <option value="cancelada" <?php echo ($reservation['estado'] === 'cancelada') ? 'selected' : ''; ?>>Cancelada</option>
+                                                <?php if ($reservation['estado'] === 'pendiente'): ?>
+                                                    <option value="confirmada">Confirmar</option>
+                                                <?php elseif ($reservation['estado'] === 'confirmada'): ?>
+                                                    <option value="finalizada">Finalizar</option>
+                                                <?php endif; ?>
                                             </select>
                                             <button class="btn btn-small btn-primary" type="submit">Guardar</button>
                                         </form>
+                                        <?php else: ?>
+                                            <span class="muted-text">Sin acciones disponibles</span>
+                                        <?php endif; ?>
                                     </td>
                                 </tr>
                             <?php endforeach; ?>

@@ -41,7 +41,6 @@
                     <select name="rol" required>
                         <option value="Cliente">Cliente</option>
                         <option value="Trabajador">Trabajador</option>
-                        <option value="Administrador">Administrador</option>
                     </select>
                 </label>
 

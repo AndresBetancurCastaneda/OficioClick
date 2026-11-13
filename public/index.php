@@ -16,6 +16,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
         $password = (string) ($_POST['password'] ?? '');
         $role = (string) ($_POST['rol'] ?? 'Cliente');
 
+        if (!in_array($role, ['Cliente', 'Trabajador'], true)) {
+            flash('error', 'El rol seleccionado no está permitido para el registro público.');
+            redirect('register');
+        }
+
         if ($nombre === '' || $apellido === '' || $email === '' || $password === '') {
             flash('error', 'Completa los campos obligatorios para continuar.');
             redirect('register');
@@ -42,8 +47,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             redirect('register');
         }
 
-        $roleMap = ['Administrador' => 1, 'Trabajador' => 2, 'Cliente' => 3];
-        $roleId = $roleMap[$role] ?? 3;
+        if ($documento !== '') {
+            $documentQuery = mysqli_prepare($db, 'SELECT id FROM usuario WHERE documento_identidad = ? LIMIT 1');
+            mysqli_stmt_bind_param($documentQuery, 's', $documento);
+            mysqli_stmt_execute($documentQuery);
+            $documentResult = mysqli_stmt_get_result($documentQuery);
+            $documentExists = mysqli_fetch_assoc($documentResult);
+            mysqli_stmt_close($documentQuery);
+
+            if ($documentExists) {
+                flash('error', 'El documento de identidad ya se encuentra registrado.');
+                redirect('register');
+            }
+        }
+
+        $roleMap = ['Trabajador' => 2, 'Cliente' => 3];
+        $roleId = $roleMap[$role];
         $passwordHash = password_hash($password, PASSWORD_DEFAULT);
 
         $stmt = mysqli_prepare($db, 'INSERT INTO usuario (rol_id, nombre, apellido, email, telefono, documento_identidad, direccion, password_hash, estado) VALUES (?, ?, ?, ?, ?, ?, ?, ?, "activo")');
@@ -55,14 +74,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
         $userId = mysqli_insert_id($db);
         mysqli_stmt_close($stmt);
 
+        session_regenerate_id(true);
         $_SESSION['user'] = ['id' => $userId, 'name' => $nombre, 'role' => $role, 'email' => $email];
         flash('success', 'Registro exitoso. Bienvenido a OficioClick.');
 
         if ($role === 'Trabajador') {
             redirect('worker-dashboard');
-        }
-        if ($role === 'Administrador') {
-            redirect('admin-dashboard');
         }
         redirect('client-dashboard');
     }
@@ -77,11 +94,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
         }
 
         $user = fetchUserByEmail($email);
-        if (!$user || !password_verify($password, $user['password_hash'])) {
+        if (!$user || $user['estado'] !== 'activo' || !password_verify($password, $user['password_hash'])) {
             flash('error', 'Credenciales incorrectas.');
             redirect('login');
         }
 
+        session_regenerate_id(true);
         $_SESSION['user'] = [
             'id' => (int) $user['id'],
             'name' => $user['nombre'],
@@ -148,6 +166,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
         $descripcion = trim((string) ($_POST['descripcion'] ?? ''));
         $precio = (float) ($_POST['precio'] ?? 0);
 
+        if ($titulo === '' || $descripcion === '' || $precio <= 0) {
+            flash('error', 'Completa los datos del servicio y asigna un precio válido.');
+            redirect('worker-dashboard');
+        }
+
         $service = fetchServiceById($id);
         if (!$service || (int) $service['trabajador_id'] !== (int) $_SESSION['user']['id']) {
             flash('error', 'No puedes editar este servicio.');
@@ -184,15 +207,68 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             redirect('catalog');
         }
 
+        $scheduledAt = DateTimeImmutable::createFromFormat('!Y-m-d H:i', $date . ' ' . $time);
+        $dateErrors = DateTimeImmutable::getLastErrors();
+        $hasDateErrors = $dateErrors !== false
+            && ($dateErrors['warning_count'] > 0 || $dateErrors['error_count'] > 0);
+
+        if (
+            !$scheduledAt
+            || $hasDateErrors
+            || $scheduledAt->format('Y-m-d H:i') !== $date . ' ' . $time
+            || $scheduledAt <= new DateTimeImmutable()
+        ) {
+            flash('error', 'Selecciona una fecha y hora futura válida.');
+            redirect('catalog');
+        }
+
         $service = fetchServiceById($serviceId);
-        if (!$service || ($service['estado'] ?? '') !== 'activo') {
+        if (
+            !$service
+            || ($service['estado'] ?? '') !== 'activo'
+            || (int) ($service['disponible'] ?? 0) !== 1
+        ) {
             flash('error', 'El servicio ya no está disponible.');
+            redirect('catalog');
+        }
+
+        $slotStart = $scheduledAt->format('Y-m-d H:i:s');
+        $availability = mysqli_prepare(
+            $db,
+            'SELECT r.id
+             FROM reserva r
+             INNER JOIN servicio s ON s.id = r.servicio_id
+               WHERE TIMESTAMP(r.fecha, r.hora) < DATE_ADD(?, INTERVAL 1 HOUR)
+                 AND DATE_ADD(TIMESTAMP(r.fecha, r.hora), INTERVAL 1 HOUR) > ?
+               AND r.estado IN ("pendiente", "confirmada")
+               AND (r.cliente_id = ? OR s.trabajador_id = ?)
+             LIMIT 1'
+        );
+        mysqli_stmt_bind_param(
+            $availability,
+            'ssii',
+            $slotStart,
+            $slotStart,
+            $_SESSION['user']['id'],
+            $service['trabajador_id']
+        );
+        mysqli_stmt_execute($availability);
+        $availabilityResult = mysqli_stmt_get_result($availability);
+        $conflictingReservation = mysqli_fetch_assoc($availabilityResult);
+        mysqli_stmt_close($availability);
+
+        if ($conflictingReservation) {
+            flash('error', 'Ese horario ya no está disponible para el cliente o el trabajador.');
             redirect('catalog');
         }
 
         $stmt = mysqli_prepare($db, 'INSERT INTO reserva (cliente_id, servicio_id, fecha, hora, estado) VALUES (?, ?, ?, ?, "pendiente")');
         mysqli_stmt_bind_param($stmt, 'iiss', $_SESSION['user']['id'], $serviceId, $date, $time);
-        mysqli_stmt_execute($stmt);
+        if (!mysqli_stmt_execute($stmt)) {
+            mysqli_stmt_close($stmt);
+            flash('error', 'No se pudo registrar la reserva. Inténtalo nuevamente.');
+            redirect('catalog');
+        }
         mysqli_stmt_close($stmt);
 
         flash('success', 'La reserva se registró correctamente.');
@@ -200,29 +276,154 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
     }
 
     if ($action === 'update-reservation-status') {
-        requireRole(['Trabajador', 'Administrador']);
+        requireRole(['Cliente', 'Trabajador', 'Administrador']);
         $reservationId = (int) ($_POST['reservation_id'] ?? 0);
-        $status = (string) ($_POST['status'] ?? 'pendiente');
+        $status = (string) ($_POST['status'] ?? '');
 
-        if ($status === 'finalizada') {
-            $stmt = mysqli_prepare($db, 'UPDATE reserva SET estado = ? WHERE id = ?');
-            mysqli_stmt_bind_param($stmt, 'si', $status, $reservationId);
-            mysqli_stmt_execute($stmt);
-            mysqli_stmt_close($stmt);
-            flash('success', 'Estado actualizado.');
-            redirect('worker-dashboard');
+        if ($reservationId <= 0 || !in_array($status, ['confirmada', 'finalizada', 'cancelada'], true)) {
+            flash('error', 'La solicitud de cambio de estado no es válida.');
+            redirect('home');
         }
 
-        $stmt = mysqli_prepare($db, 'UPDATE reserva SET estado = ? WHERE id = ?');
-        mysqli_stmt_bind_param($stmt, 'si', $status, $reservationId);
-        mysqli_stmt_execute($stmt);
-        mysqli_stmt_close($stmt);
-        flash('success', 'Estado de la reserva actualizado.');
+        $reservationQuery = mysqli_prepare(
+            $db,
+            'SELECT r.cliente_id, r.estado, s.trabajador_id
+             FROM reserva r
+             INNER JOIN servicio s ON s.id = r.servicio_id
+             WHERE r.id = ?
+             LIMIT 1'
+        );
+        mysqli_stmt_bind_param($reservationQuery, 'i', $reservationId);
+        mysqli_stmt_execute($reservationQuery);
+        $reservationResult = mysqli_stmt_get_result($reservationQuery);
+        $reservation = mysqli_fetch_assoc($reservationResult);
+        mysqli_stmt_close($reservationQuery);
 
-        if ($_SESSION['user']['role'] === 'Administrador') {
+        $role = $_SESSION['user']['role'];
+        $userId = (int) $_SESSION['user']['id'];
+        $currentStatus = $reservation['estado'] ?? '';
+        $allowedTransition = false;
+        $stmt = null;
+
+        if ($reservation && !in_array($currentStatus, ['finalizada', 'cancelada'], true)) {
+            if (
+                $role === 'Trabajador'
+                && (int) $reservation['trabajador_id'] === $userId
+                && (
+                    ($currentStatus === 'pendiente' && $status === 'confirmada')
+                    || ($currentStatus === 'confirmada' && $status === 'finalizada')
+                )
+            ) {
+                $allowedTransition = true;
+                $stmt = mysqli_prepare(
+                    $db,
+                    'UPDATE reserva r
+                     INNER JOIN servicio s ON s.id = r.servicio_id
+                     SET r.estado = ?
+                     WHERE r.id = ? AND r.estado = ? AND s.trabajador_id = ?'
+                );
+                mysqli_stmt_bind_param($stmt, 'sisi', $status, $reservationId, $currentStatus, $userId);
+            } elseif (
+                $role === 'Cliente'
+                && (int) $reservation['cliente_id'] === $userId
+                && in_array($currentStatus, ['pendiente', 'confirmada'], true)
+                && $status === 'cancelada'
+            ) {
+                $allowedTransition = true;
+                $stmt = mysqli_prepare(
+                    $db,
+                    'UPDATE reserva SET estado = ? WHERE id = ? AND cliente_id = ? AND estado = ?'
+                );
+                mysqli_stmt_bind_param($stmt, 'siis', $status, $reservationId, $userId, $currentStatus);
+            } elseif (
+                $role === 'Administrador'
+                && in_array($currentStatus, ['pendiente', 'confirmada'], true)
+                && $status === 'cancelada'
+            ) {
+                $allowedTransition = true;
+                $stmt = mysqli_prepare($db, 'UPDATE reserva SET estado = ? WHERE id = ? AND estado = ?');
+                mysqli_stmt_bind_param($stmt, 'sis', $status, $reservationId, $currentStatus);
+            }
+        }
+
+        if (!$allowedTransition || $stmt === null) {
+            flash('error', 'No tienes permiso para realizar ese cambio o la reserva ya está cerrada.');
+            if ($role === 'Cliente') {
+                redirect('client-dashboard');
+            }
+            redirect($role === 'Administrador' ? 'admin-dashboard' : 'worker-dashboard');
+        }
+
+        $updated = mysqli_stmt_execute($stmt) && mysqli_stmt_affected_rows($stmt) === 1;
+        mysqli_stmt_close($stmt);
+
+        if (!$updated) {
+            flash('error', 'No se pudo actualizar la reserva. Puede que haya cambiado en otra sesión.');
+        } else {
+            flash('success', 'Estado de la reserva actualizado.');
+        }
+
+        if ($role === 'Cliente') {
+            redirect('client-dashboard');
+        }
+        redirect($role === 'Administrador' ? 'admin-dashboard' : 'worker-dashboard');
+    }
+
+    if ($action === 'update-user') {
+        requireRole(['Administrador']);
+        $userId = (int) ($_POST['user_id'] ?? 0);
+        $role = (string) ($_POST['role'] ?? '');
+        $status = (string) ($_POST['status'] ?? '');
+        $allowedRoles = ['Cliente', 'Trabajador', 'Administrador'];
+        $allowedStatuses = ['activo', 'inactivo'];
+
+        if (
+            $userId <= 0
+            || !in_array($role, $allowedRoles, true)
+            || !in_array($status, $allowedStatuses, true)
+        ) {
+            flash('error', 'Los datos de actualización de usuario no son válidos.');
             redirect('admin-dashboard');
         }
-        redirect('worker-dashboard');
+
+        if (
+            $userId === (int) $_SESSION['user']['id']
+            && ($role !== 'Administrador' || $status !== 'activo')
+        ) {
+            flash('error', 'No puedes cambiar tu propio rol ni desactivar tu cuenta de administrador.');
+            redirect('admin-dashboard');
+        }
+
+        $targetQuery = mysqli_prepare($db, 'SELECT id FROM usuario WHERE id = ? LIMIT 1');
+        mysqli_stmt_bind_param($targetQuery, 'i', $userId);
+        mysqli_stmt_execute($targetQuery);
+        $targetResult = mysqli_stmt_get_result($targetQuery);
+        $targetUser = mysqli_fetch_assoc($targetResult);
+        mysqli_stmt_close($targetQuery);
+
+        if (!$targetUser) {
+            flash('error', 'El usuario seleccionado no existe.');
+            redirect('admin-dashboard');
+        }
+
+        $stmt = mysqli_prepare(
+            $db,
+            'UPDATE usuario u
+             INNER JOIN rol r ON r.nombre = ?
+             SET u.rol_id = r.id, u.estado = ?
+             WHERE u.id = ?'
+        );
+        mysqli_stmt_bind_param($stmt, 'ssi', $role, $status, $userId);
+        $updated = mysqli_stmt_execute($stmt);
+        mysqli_stmt_close($stmt);
+
+        if (!$updated) {
+            flash('error', 'No se pudo actualizar el usuario.');
+            redirect('admin-dashboard');
+        }
+
+        flash('success', 'Usuario actualizado correctamente.');
+        redirect('admin-dashboard');
     }
 
     if ($action === 'submit-review') {
@@ -230,6 +431,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
         $reservationId = (int) ($_POST['reservation_id'] ?? 0);
         $stars = (int) ($_POST['stars'] ?? 0);
         $comment = trim((string) ($_POST['comment'] ?? ''));
+
+        if ($stars < 1 || $stars > 5) {
+            flash('error', 'La calificación debe estar entre 1 y 5 estrellas.');
+            redirect('client-dashboard');
+        }
 
         $stmt = mysqli_prepare($db, 'SELECT * FROM reserva WHERE id = ? AND cliente_id = ? AND estado = "finalizada" LIMIT 1');
         mysqli_stmt_bind_param($stmt, 'ii', $reservationId, $_SESSION['user']['id']);
@@ -254,9 +460,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
         mysqli_stmt_close($existing);
 
         $service = fetchServiceById((int) $reservation['servicio_id']);
+        if (!$service) {
+            flash('error', 'No se encontró el servicio asociado a la reserva.');
+            redirect('client-dashboard');
+        }
+
         $reviewInsert = mysqli_prepare($db, 'INSERT INTO calificacion (reserva_id, cliente_id, trabajador_id, estrellas, comentario) VALUES (?, ?, ?, ?, ?)');
-        mysqli_stmt_bind_param($reviewInsert, 'iiiss', $reservationId, $_SESSION['user']['id'], $service['trabajador_id'], $stars, $comment);
-        mysqli_stmt_execute($reviewInsert);
+        mysqli_stmt_bind_param($reviewInsert, 'iiiis', $reservationId, $_SESSION['user']['id'], $service['trabajador_id'], $stars, $comment);
+        if (!mysqli_stmt_execute($reviewInsert)) {
+            mysqli_stmt_close($reviewInsert);
+            flash('error', 'No se pudo guardar la calificación. Inténtalo nuevamente.');
+            redirect('client-dashboard');
+        }
         mysqli_stmt_close($reviewInsert);
 
         flash('success', 'Gracias por calificar el servicio.');

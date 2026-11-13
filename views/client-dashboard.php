@@ -33,21 +33,32 @@
                                         <td><?php echo formatMoney((float) $reservation['precio']); ?></td>
                                         <td>
                                             <?php if ($reservation['estado'] === 'finalizada'): ?>
+                                                <?php if (empty($reservation['calificacion_id'])): ?>
+                                                    <form method="post" action="index.php" class="inline-form">
+                                                        <input type="hidden" name="action" value="submit-review">
+                                                        <input type="hidden" name="reservation_id" value="<?php echo (int) $reservation['id']; ?>">
+                                                        <select name="stars" class="compact-select" required>
+                                                            <option value="5">5★</option>
+                                                            <option value="4">4★</option>
+                                                            <option value="3">3★</option>
+                                                            <option value="2">2★</option>
+                                                            <option value="1">1★</option>
+                                                        </select>
+                                                        <textarea name="comment" rows="2" placeholder="Comentario opcional"></textarea>
+                                                        <button class="btn btn-primary btn-small" type="submit">Calificar</button>
+                                                    </form>
+                                                <?php else: ?>
+                                                    <span class="muted-text">Ya calificada</span>
+                                                <?php endif; ?>
+                                            <?php elseif (in_array($reservation['estado'], ['pendiente', 'confirmada'], true)): ?>
                                                 <form method="post" action="index.php" class="inline-form">
-                                                    <input type="hidden" name="action" value="submit-review">
+                                                    <input type="hidden" name="action" value="update-reservation-status">
                                                     <input type="hidden" name="reservation_id" value="<?php echo (int) $reservation['id']; ?>">
-                                                    <select name="stars" class="compact-select">
-                                                        <option value="5">5★</option>
-                                                        <option value="4">4★</option>
-                                                        <option value="3">3★</option>
-                                                        <option value="2">2★</option>
-                                                        <option value="1">1★</option>
-                                                    </select>
-                                                    <textarea name="comment" rows="2" placeholder="Comentario opcional"></textarea>
-                                                    <button class="btn btn-primary btn-small" type="submit">Calificar</button>
+                                                    <input type="hidden" name="status" value="cancelada">
+                                                    <button class="btn btn-secondary btn-small" type="submit">Cancelar reserva</button>
                                                 </form>
                                             <?php else: ?>
-                                                <span class="muted-text">Pendiente</span>
+                                                <span class="muted-text">Sin acciones disponibles</span>
                                             <?php endif; ?>
                                         </td>
                                     </tr>

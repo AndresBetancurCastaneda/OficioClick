@@ -27,55 +27,19 @@ function dbConnection(): ?mysqli
 
 function ensureDatabase(): bool
 {
-    mysqli_report(MYSQLI_REPORT_OFF);
-
-    try {
-        $rootConnection = @mysqli_connect(DB_HOST, DB_USER, DB_PASS, null, DB_PORT);
-    } catch (Throwable $e) {
-        return false;
-    }
-
-    if ($rootConnection === false || mysqli_connect_errno() !== 0) {
-        return false;
-    }
-
-    try {
-        mysqli_query($rootConnection, 'CREATE DATABASE IF NOT EXISTS `' . DB_NAME . '` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci');
-    } catch (Throwable $e) {
-        mysqli_close($rootConnection);
-        return false;
-    }
-    mysqli_close($rootConnection);
-
     $connection = dbConnection();
     if ($connection === null) {
         return false;
     }
 
-    $schemaPath = APP_ROOT . '/database/schema.sql';
-    if (!is_file($schemaPath)) {
+    $result = mysqli_query($connection, 'SELECT 1 FROM usuario LIMIT 0');
+    if ($result === false) {
+        error_log('OficioClick database check failed: ' . mysqli_error($connection));
         return false;
     }
 
-    $sql = file_get_contents($schemaPath);
-    if ($sql === false || trim($sql) === '') {
-        return false;
-    }
-
-    try {
-        if (mysqli_multi_query($connection, $sql)) {
-            do {
-                if ($result = mysqli_store_result($connection)) {
-                    mysqli_free_result($result);
-                }
-            } while (mysqli_next_result($connection));
-            return true;
-        }
-    } catch (Throwable $e) {
-        return false;
-    }
-
-    return false;
+    mysqli_free_result($result);
+    return true;
 }
 
 function e(string $value): string
@@ -303,11 +267,12 @@ function fetchReservationsForUser(int $userId, string $role): array
     }
 
     if ($role === 'Cliente') {
-        $sql = 'SELECT r.*, s.titulo, s.precio, c.nombre AS category_name, u.nombre AS worker_name, u.apellido AS worker_lastname
+        $sql = 'SELECT r.*, cal.id AS calificacion_id, s.titulo, s.precio, c.nombre AS category_name, u.nombre AS worker_name, u.apellido AS worker_lastname
                 FROM reserva r
                 INNER JOIN servicio s ON s.id = r.servicio_id
                 INNER JOIN categoria c ON c.id = s.categoria_id
                 INNER JOIN usuario u ON u.id = s.trabajador_id
+                LEFT JOIN calificacion cal ON cal.reserva_id = r.id
                 WHERE r.cliente_id = ? ORDER BY r.fecha DESC, r.hora DESC';
         $stmt = mysqli_prepare($db, $sql);
         mysqli_stmt_bind_param($stmt, 'i', $userId);
@@ -323,11 +288,12 @@ function fetchReservationsForUser(int $userId, string $role): array
         mysqli_stmt_bind_param($stmt, 'i', $userId);
         mysqli_stmt_execute($stmt);
     } else {
-        $sql = 'SELECT r.*, s.titulo, s.precio, c.nombre AS category_name, u.nombre AS worker_name, u.apellido AS worker_lastname
+        $sql = 'SELECT r.*, s.titulo, s.precio, c.nombre AS category_name, client.nombre AS client_name, client.apellido AS client_lastname
                 FROM reserva r
                 INNER JOIN servicio s ON s.id = r.servicio_id
                 INNER JOIN categoria c ON c.id = s.categoria_id
-                INNER JOIN usuario u ON u.id = s.trabajador_id ORDER BY r.fecha DESC';
+                INNER JOIN usuario client ON client.id = r.cliente_id
+                ORDER BY r.fecha DESC';
         $stmt = mysqli_prepare($db, $sql);
         mysqli_stmt_execute($stmt);
     }
