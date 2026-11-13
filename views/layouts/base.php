@@ -18,7 +18,11 @@
                 <span>OficioClick</span>
             </a>
 
-            <nav class="main-nav">
+            <button class="nav-toggle" type="button" aria-expanded="false" aria-controls="primary-navigation">
+                Menú
+            </button>
+
+            <nav class="main-nav" id="primary-navigation">
                 <a href="index.php?page=home">Inicio</a>
                 <a href="index.php?page=catalog">Catálogo</a>
                 <?php if (isLoggedIn()): ?>

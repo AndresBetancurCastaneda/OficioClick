@@ -1,9 +1,9 @@
 :root {
   --navy: #1B365D;
   --blue: #2B6CB0;
-  --green: #16A34A;
-  --amber: #D97706;
-  --red: #DC2626;
+  --green: #166534;
+  --amber: #92400E;
+  --red: #B91C1C;
   --dark: #1E293B;
   --white: #FFFFFF;
   --muted: #F8FAFC;
@@ -78,6 +78,24 @@ img { max-width: 100%; }
 
 .main-nav a {
   color: var(--navy);
+}
+
+.nav-toggle {
+  display: none;
+  border: 1px solid var(--border);
+  border-radius: 0.65rem;
+  background: var(--white);
+  color: var(--navy);
+  padding: 0.65rem 0.85rem;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.nav-toggle:focus-visible,
+.main-nav a:focus-visible {
+  outline: 3px solid var(--blue);
+  outline-offset: 3px;
 }
 
 .nav-actions {
@@ -548,8 +566,36 @@ th {
     flex-wrap: wrap;
   }
 
+  .nav-wrap {
+    position: relative;
+    flex-wrap: wrap;
+  }
+
+  .nav-toggle {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+
   .main-nav {
     display: none;
+    flex-basis: 100%;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0;
+    padding: 0.5rem;
+    border: 1px solid var(--border);
+    border-radius: 0.75rem;
+    background: var(--white);
+    box-shadow: var(--shadow);
+  }
+
+  .main-nav.is-open {
+    display: flex;
+  }
+
+  .main-nav a {
+    padding: 0.75rem;
   }
 
   .filter-box {
