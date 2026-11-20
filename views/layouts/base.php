@@ -1,4 +1,4 @@
-<?php $flash = getFlash(); if (isset($viewData) && is_array($viewData)) { extract($viewData); } ?>
+<?php $flash = getFlash(); $formErrorDescription = $flash && $flash['type'] === 'error' ? ' aria-describedby="flash-message"' : ''; if (isset($viewData) && is_array($viewData)) { extract($viewData); } ?>
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -40,8 +40,9 @@
             <div class="nav-actions">
                 <?php if (isLoggedIn()): ?>
                     <span class="user-pill"><?php echo e($_SESSION['user']['name']); ?> · <?php echo e($_SESSION['user']['role']); ?></span>
-                    <form method="post" action="index.php?page=logout">
+                    <form method="post" action="index.php?page=logout"<?php echo $formErrorDescription; ?>>
                         <input type="hidden" name="action" value="logout">
+                        <?php echo csrfField(); ?>
                         <button class="btn btn-secondary" type="submit">Cerrar sesión</button>
                     </form>
                 <?php else: ?>
@@ -54,7 +55,7 @@
 
     <?php if ($flash): ?>
         <div class="container alert-container">
-            <div class="alert alert-<?php echo e($flash['type']); ?>"><?php echo e($flash['message']); ?></div>
+            <div id="flash-message" class="alert alert-<?php echo e($flash['type']); ?>" role="<?php echo $flash['type'] === 'error' ? 'alert' : 'status'; ?>" aria-live="<?php echo $flash['type'] === 'error' ? 'assertive' : 'polite'; ?>"><?php echo e($flash['message']); ?></div>
         </div>
     <?php endif; ?>
 

@@ -188,14 +188,14 @@ WHERE u.email = 'maria@oficioclick.com'
 AND NOT EXISTS (SELECT 1 FROM `servicio` WHERE `titulo` = 'Limpieza profunda del hogar');
 
 INSERT INTO `reserva` (`cliente_id`, `servicio_id`, `fecha`, `hora`, `estado`)
-SELECT c.id, s.id, '2026-11-12', '09:00:00', 'pendiente'
+SELECT c.id, s.id, DATE_ADD(CURRENT_DATE, INTERVAL 1 DAY), '09:00:00', 'pendiente'
 FROM `usuario` c
 JOIN `servicio` s ON s.titulo = 'Reparación de fugas'
 WHERE c.email = 'ana@oficioclick.com'
 AND NOT EXISTS (SELECT 1 FROM `reserva` WHERE `servicio_id` = s.id AND `cliente_id` = c.id);
 
 INSERT INTO `reserva` (`cliente_id`, `servicio_id`, `fecha`, `hora`, `estado`)
-SELECT c.id, s.id, '2026-11-15', '15:30:00', 'finalizada'
+SELECT c.id, s.id, DATE_SUB(CURRENT_DATE, INTERVAL 1 DAY), '15:30:00', 'finalizada'
 FROM `usuario` c
 JOIN `servicio` s ON s.titulo = 'Instalación eléctrica residencial'
 WHERE c.email = 'luis@oficioclick.com'

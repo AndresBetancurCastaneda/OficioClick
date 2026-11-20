@@ -4,7 +4,7 @@
             <span class="trust-badge"><span aria-hidden="true">✓</span> Profesionales para el Valle de Aburrá</span>
             <h1>El oficio que necesitas, <span>a un clic.</span></h1>
             <p>Encuentra profesionales confiables para tu hogar. Reserva servicios por horas de forma simple, segura y sin complicaciones.</p>
-            <form method="get" action="index.php" class="quick-search">
+            <form method="get" action="index.php" class="quick-search"<?php echo $formErrorDescription; ?>>
                 <input type="hidden" name="page" value="catalog">
                 <label>
                     ¿Qué servicio necesitas?

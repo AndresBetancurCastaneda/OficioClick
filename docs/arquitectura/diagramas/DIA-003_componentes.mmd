@@ -1,0 +1,27 @@
+flowchart TB
+    Browser["Navegador"]
+    subgraph Public["public/"]
+        Entry["index.php<br/>controlador frontal"]
+        Assets["assets/<br/>CSS y JavaScript"]
+    end
+    subgraph App["app/"]
+        Boot["bootstrap.php<br/>sesión y arranque"]
+        Config["config.php<br/>configuración DB"]
+        Helpers["helpers.php<br/>consultas y reglas compartidas"]
+    end
+    subgraph Views["views/"]
+        Layout["layouts/base.php"]
+        Pages["home, catalog, detail,<br/>auth y paneles por rol"]
+    end
+    Schema["database/schema.sql<br/>esquema y datos base"]
+    DB[("MySQL 8.0")]
+
+    Browser --> Entry
+    Browser --> Assets
+    Entry --> Boot
+    Boot --> Config
+    Entry --> Helpers
+    Entry --> Pages
+    Pages --> Layout
+    Helpers --> DB
+    Schema -. "inicialización" .-> DB

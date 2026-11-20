@@ -13,10 +13,17 @@ Plataforma web para contratar servicios por horas en Medellín y su área metrop
 - XAMPP (alternativa de desarrollo local)
 
 ## Estructura del proyecto
-- `public/` – punto de entrada web y assets
-- `app/` – configuración, helpers y arranque de la aplicación
-- `database/` – script SQL con la estructura inicial y datos semilla
-- `views/` – vistas de cada pantalla principal
+- `app/` – arranque, configuración y lógica compartida (`bootstrap.php`, `config.php`, `helpers.php`)
+- `database/schema.sql` – esquema MySQL 8.0 y datos iniciales
+- `database/migrations/` – migraciones manuales para bases existentes
+- `public/` – punto de entrada `index.php` y assets CSS/JavaScript
+- `views/` – pantallas públicas, paneles por rol y layout base
+- `tests/` – verificaciones de requisitos y seguridad
+- `tests/fixtures/` – datos sintéticos DATA-001 y DATA-002 para QA
+- `docs/arquitectura/diagramas/` – diagramas Mermaid DIA-001 a DIA-006
+- `Dockerfile`, `docker-compose.yml`, `.env.example` – imagen PHP/Apache, servicios y plantilla local de variables
+
+La aplicación es un monolito PHP 8.2 con páginas renderizadas en el servidor, MySQL 8.0 y MySQLi; no expone una API REST independiente.
 
 ## Ejecución con Docker
 Requisitos: Docker Desktop con Docker Compose habilitado.
@@ -47,6 +54,7 @@ Usuarios de ejemplo incluidos en el script SQL:
 - Cliente: `ana@oficioclick.com` / `12345678a`
 
 Estas credenciales son únicamente para desarrollo local. Cámbialas y reemplaza los datos semilla antes de exponer una instalación a Internet.
+Las cuentas sintéticas adicionales de DATA-001 y DATA-002 usan la misma contraseña de desarrollo; por ejemplo, `data001.worker01@example.test` y `data002.user0005@example.test`.
 
 ## Páginas principales
 - Inicio: `index.php?page=home`
@@ -113,11 +121,13 @@ Las comprobaciones de aceptación que requieren un piloto real no se consideran 
 
 La verificación local de regresión de requisitos se ejecuta con `docker compose exec -T web php tests/requirements_smoke.php`. También se revisan los archivos PHP con `php -l` y la configuración con `docker compose config --quiet`.
 
-La carpeta `C:\Users\ac200\OficioClick` es la copia conectada al repositorio Git y a Docker. `C:\xampp\htdocs\OficioClick` es otra copia local y no se sincroniza automáticamente.
+Las verificaciones de seguridad sin dependencia de la base de datos se ejecutan con `docker compose exec -T web php tests/security_helpers_smoke.php`. Para ejecutar las verificaciones funcionales, debe estar disponible la base de datos del entorno de pruebas. Los fixtures de `tests/fixtures/` se cargan únicamente en una base desechable de QA; DATA-001 presupone el esquema y los datos base de `database/schema.sql`, y DATA-002 se carga después de DATA-001. No cargues estos fixtures en una instalación con datos de usuarios.
 
-### Observaciones pendientes sobre los documentos fuente
+El puerto web publicado por Docker es `APP_PORT` (8080 por defecto); MySQL escucha en 3306 dentro de la red de Compose y no se publica al host. En XAMPP, Apache/MySQL usan los puertos definidos en esa instalación y el esquema debe importarse manualmente.
 
-Los cuatro DOCX originales no se modificaron. Antes de declarar la trazabilidad documental cerrada, el equipo debe resolver estas diferencias:
+### Observaciones de alineación con los documentos fuente
+
+Los documentos académicos se auditaron sin modificarlos. Antes de declarar la trazabilidad documental cerrada, el equipo/instructor debe resolver estas diferencias:
 
 - El documento de requisitos usa `RF-001` a `RF-008` y define `RNF-001` a `RNF-007`; el backlog alterna códigos sin ceros (`RF-01`) y afirma que existen ocho RNF.
 - El backlog vincula la búsqueda de menos de 3 segundos con `RNF-05`, aunque el documento de requisitos asigna rendimiento a `RNF-001` y compatibilidad entre navegadores a `RNF-005`.
@@ -126,5 +136,7 @@ Los cuatro DOCX originales no se modificaron. Antes de declarar la trazabilidad 
 - La matriz de permisos menciona creación de usuarios por Administración y actualización del perfil propio para Cliente/Trabajador; esos flujos no están descritos en los requisitos funcionales detallados ni implementados como pantallas.
 - La formulación registra metas piloto de 100 usuarios, 50 servicios, 30 reservas y 20 calificaciones. El estado actual de la base Docker es menor y no acredita resultados piloto; los objetivos de carga, disponibilidad, usabilidad y compatibilidad también requieren sus evidencias externas.
 - La formulación marca pendientes las fechas de hitos y el representante funcional, y señala una diferencia entre un cronograma de 29 semanas y actividades documentadas en un periodo aproximado de 10 semanas. El plan de gestión conserva una lista de verificación con criterios pendientes de revisión.
+- El esquema actual incluye ocho tablas (`rol`, `ciudad`, `categoria`, `usuario`, `admin_action`, `servicio`, `reserva` y `calificacion`): seis entidades funcionales originales y dos de soporte. El diagrama DIA-006 refleja el esquema real; no se eliminaron `ciudad` ni `admin_action` para forzar el conteo de seis.
+- El plan define 26 casos de prueba, pero las pruebas de carga, disponibilidad durante 30 días, aceptación con usuarios, compatibilidad multi-navegador y recuperación requieren ambientes y evidencias que no se sustituyen con una revisión del código ni con pruebas locales.
 
 Estas observaciones requieren una decisión del equipo/instructor; no se cambiaron los documentos académicos para evitar asumir una línea base aprobada.

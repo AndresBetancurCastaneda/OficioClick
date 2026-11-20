@@ -74,6 +74,34 @@ function isLoggedIn(): bool
     return isset($_SESSION['user']['id']);
 }
 
+function csrfToken(): string
+{
+    if (!isset($_SESSION['csrf_token']) || !is_string($_SESSION['csrf_token'])) {
+        $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+    }
+
+    return $_SESSION['csrf_token'];
+}
+
+function rotateCsrfToken(): void
+{
+    $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+}
+
+function csrfField(): string
+{
+    return '<input type="hidden" name="csrf_token" value="' . e(csrfToken()) . '">';
+}
+
+function verifyCsrfToken(mixed $submittedToken): bool
+{
+    $sessionToken = $_SESSION['csrf_token'] ?? null;
+
+    return is_string($sessionToken)
+        && is_string($submittedToken)
+        && hash_equals($sessionToken, $submittedToken);
+}
+
 function currentUser(): ?array
 {
     if (!isLoggedIn()) {
@@ -96,10 +124,46 @@ function requireRole(array $allowedRoles): void
     requireLogin();
 
     $user = currentUser();
-    if (!in_array($user['role'], $allowedRoles, true)) {
+    $databaseUser = $user === null ? null : fetchUserById((int) $user['id']);
+    if ($databaseUser === null) {
+        if (dbConnection() === null) {
+            flash('error', 'No se pudo verificar tu cuenta porque MySQL no está disponible. Inténtalo más tarde.');
+            redirect('login');
+        }
+
+        invalidateCurrentUserSession('Tu cuenta ya no está disponible. Inicia sesión nuevamente.');
+    }
+
+    if (!sessionMatchesActiveUser($user, $databaseUser)) {
+        invalidateCurrentUserSession('Tu cuenta está inactiva o sus permisos cambiaron. Inicia sesión nuevamente.');
+    }
+
+    if (!in_array($databaseUser['role_name'], $allowedRoles, true)) {
         flash('error', 'No tienes permisos para acceder a esta vista.');
         redirect('home');
     }
+}
+
+function sessionMatchesActiveUser(array $sessionUser, array $databaseUser): bool
+{
+    return isset(
+        $sessionUser['id'],
+        $sessionUser['role'],
+        $databaseUser['id'],
+        $databaseUser['role_name'],
+        $databaseUser['estado']
+    )
+        && (int) $sessionUser['id'] === (int) $databaseUser['id']
+        && $databaseUser['estado'] === 'activo'
+        && $sessionUser['role'] === $databaseUser['role_name'];
+}
+
+function invalidateCurrentUserSession(string $message): void
+{
+    unset($_SESSION['user']);
+    session_regenerate_id(true);
+    flash('error', $message);
+    redirect('login');
 }
 
 function userRoleName(int $roleId): string

@@ -1,0 +1,18 @@
+flowchart LR
+    User["Cliente / Trabajador / Administrador"]
+    Browser["Navegador<br/>HTML, CSS, JavaScript"]
+
+    subgraph Compose["Docker Compose"]
+        Web["Contenedor web<br/>Apache 2.4 + PHP 8.2<br/>DocumentRoot: public/"]
+        MySQL["Contenedor db<br/>MySQL 8.0"]
+        Volume[("Volumen db_data")]
+        Web -->|"MySQLi :3306"| MySQL
+        MySQL --> Volume
+    end
+
+    Env[".env local<br/>no versionado"] -.->|"variables DB_*"| Web
+    User --> Browser
+    Browser -->|"HTTP : APP_PORT (8080 por defecto)"| Web
+
+    XAMPP["Alternativa local<br/>Apache/PHP + MySQL"]
+    Browser -.->|"HTTP local"| XAMPP

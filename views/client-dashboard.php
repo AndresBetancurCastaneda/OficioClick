@@ -61,9 +61,10 @@ foreach ($reservations as $reservation) {
                             <div class="reservation-actions">
                                 <?php if ($reservation['estado'] === 'finalizada'): ?>
                                     <?php if (empty($reservation['calificacion_id'])): ?>
-                                        <form method="post" action="index.php" class="review-form">
+                                        <form method="post" action="index.php" class="review-form"<?php echo $formErrorDescription; ?>>
                                             <input type="hidden" name="action" value="submit-review">
                                             <input type="hidden" name="reservation_id" value="<?php echo (int) $reservation['id']; ?>">
+                                            <?php echo csrfField(); ?>
                                             <label class="sr-only" for="stars-<?php echo (int) $reservation['id']; ?>">Calificación</label>
                                             <select id="stars-<?php echo (int) $reservation['id']; ?>" name="stars" class="compact-select" required>
                                                 <option value="5">5 estrellas</option>
@@ -80,10 +81,11 @@ foreach ($reservations as $reservation) {
                                         <span class="muted-text">Ya calificada</span>
                                     <?php endif; ?>
                                 <?php elseif (in_array($reservation['estado'], ['pendiente', 'confirmada'], true)): ?>
-                                    <form method="post" action="index.php" class="inline-form">
+                                    <form method="post" action="index.php" class="inline-form"<?php echo $formErrorDescription; ?>>
                                         <input type="hidden" name="action" value="update-reservation-status">
                                         <input type="hidden" name="reservation_id" value="<?php echo (int) $reservation['id']; ?>">
                                         <input type="hidden" name="status" value="cancelada">
+                                        <?php echo csrfField(); ?>
                                         <button class="btn btn-secondary btn-small" type="submit">Cancelar reserva</button>
                                     </form>
                                 <?php else: ?>

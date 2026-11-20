@@ -10,8 +10,9 @@
         <div class="dashboard-grid">
             <div class="panel-card">
                 <h2>Publicar servicio</h2>
-                <form method="post" action="index.php" class="stacked-form">
+                <form method="post" action="index.php" class="stacked-form"<?php echo $formErrorDescription; ?>>
                     <input type="hidden" name="action" value="create-service">
+                    <?php echo csrfField(); ?>
                     <label>
                         Título
                         <input type="text" name="titulo" required>
@@ -62,9 +63,10 @@
                                         <td>
                                             <details class="service-edit">
                                                 <summary class="text-link">Editar</summary>
-                                                <form method="post" action="index.php" class="stacked-form">
+                                                <form method="post" action="index.php" class="stacked-form"<?php echo $formErrorDescription; ?>>
                                                     <input type="hidden" name="action" value="update-service">
                                                     <input type="hidden" name="service_id" value="<?php echo (int) $service['id']; ?>">
+                                                    <?php echo csrfField(); ?>
                                                     <label>
                                                         Título
                                                         <input type="text" name="titulo" value="<?php echo e($service['titulo']); ?>" required>
@@ -88,15 +90,17 @@
                                                     <button class="btn btn-primary btn-small" type="submit">Guardar cambios</button>
                                                 </form>
                                             </details>
-                                            <form method="post" action="index.php" class="inline-form compact-inline">
+                                            <form method="post" action="index.php" class="inline-form compact-inline"<?php echo $formErrorDescription; ?>>
                                                 <input type="hidden" name="action" value="toggle-service-status">
                                                 <input type="hidden" name="service_id" value="<?php echo (int) $service['id']; ?>">
                                                 <input type="hidden" name="status" value="<?php echo $service['estado'] === 'activo' ? 'inactivo' : 'activo'; ?>">
+                                                <?php echo csrfField(); ?>
                                                 <button class="btn btn-secondary btn-small" type="submit"><?php echo $service['estado'] === 'activo' ? 'Desactivar' : 'Activar'; ?></button>
                                             </form>
-                                            <form method="post" action="index.php" class="inline-form compact-inline" data-confirm="¿Eliminar este servicio? Si tiene reservas asociadas no se podrá borrar.">
+                                            <form method="post" action="index.php" class="inline-form compact-inline" data-confirm="¿Eliminar este servicio? Si tiene reservas asociadas no se podrá borrar."<?php echo $formErrorDescription; ?>>
                                                 <input type="hidden" name="action" value="delete-service">
                                                 <input type="hidden" name="service_id" value="<?php echo (int) $service['id']; ?>">
+                                                <?php echo csrfField(); ?>
                                                 <button class="btn btn-secondary btn-small" type="submit">Eliminar</button>
                                             </form>
                                         </td>
@@ -136,9 +140,10 @@
                                     <td><span class="status-badge status-<?php echo e(strtolower($reservation['estado'])); ?>"><?php echo e($reservation['estado']); ?></span></td>
                                     <td>
                                         <?php if (in_array($reservation['estado'], ['pendiente', 'confirmada'], true)): ?>
-                                        <form method="post" action="index.php" class="inline-form compact-inline">
+                                        <form method="post" action="index.php" class="inline-form compact-inline"<?php echo $formErrorDescription; ?>>
                                             <input type="hidden" name="action" value="update-reservation-status">
                                             <input type="hidden" name="reservation_id" value="<?php echo (int) $reservation['id']; ?>">
+                                            <?php echo csrfField(); ?>
                                             <select name="status" class="compact-select">
                                                 <?php if ($reservation['estado'] === 'pendiente'): ?>
                                                     <option value="confirmada">Confirmar</option>

@@ -7,7 +7,7 @@
             </div>
         </div>
 
-        <form method="get" action="index.php" class="filter-box">
+        <form method="get" action="index.php" class="filter-box"<?php echo $formErrorDescription; ?>>
             <input type="hidden" name="page" value="catalog">
             <label>
                 Categoría

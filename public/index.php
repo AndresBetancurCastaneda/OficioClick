@@ -1,6 +1,18 @@
 <?php
 require_once __DIR__ . '/../app/bootstrap.php';
 
+if (
+    ($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST'
+    && !verifyCsrfToken($_POST['csrf_token'] ?? null)
+) {
+    http_response_code(403);
+    header('Content-Type: text/html; charset=UTF-8');
+    header('Cache-Control: no-store');
+    header('X-Content-Type-Options: nosniff');
+    echo '<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Solicitud no válida | OficioClick</title></head><body><main><h1>Solicitud no válida</h1><p role="alert">No pudimos verificar esta solicitud. Recarga la página e inténtalo nuevamente.</p><a href="index.php?page=home">Volver al inicio</a></main></body></html>';
+    exit;
+}
+
 $db = dbConnection();
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
@@ -98,6 +110,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
         mysqli_stmt_close($stmt);
 
         session_regenerate_id(true);
+        rotateCsrfToken();
         $_SESSION['user'] = ['id' => $userId, 'name' => $nombre, 'role' => $role, 'email' => $email];
         flash('success', 'Registro exitoso. Bienvenido a OficioClick.');
 
@@ -128,6 +141,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
         }
 
         session_regenerate_id(true);
+        rotateCsrfToken();
         $_SESSION['user'] = [
             'id' => (int) $user['id'],
             'name' => $user['nombre'],
@@ -316,6 +330,78 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             redirect('catalog');
         }
 
+        if (!mysqli_begin_transaction($db)) {
+            flash('error', 'No se pudo iniciar la validación del horario. Inténtalo nuevamente.');
+            redirect('catalog');
+        }
+
+        $accountIds = [(int) $_SESSION['user']['id'], (int) $service['trabajador_id']];
+        sort($accountIds, SORT_NUMERIC);
+        $accountLock = mysqli_prepare(
+            $db,
+            'SELECT u.id, u.estado, r.nombre AS role_name
+             FROM usuario u
+             INNER JOIN rol r ON r.id = u.rol_id
+             WHERE u.id = ?
+             FOR UPDATE'
+        );
+        $accountsLocked = $accountLock !== false;
+        if ($accountsLocked) {
+            $expectedRoles = [
+                (int) $_SESSION['user']['id'] => 'Cliente',
+                (int) $service['trabajador_id'] => 'Trabajador',
+            ];
+            foreach (array_unique($accountIds) as $accountId) {
+                mysqli_stmt_bind_param($accountLock, 'i', $accountId);
+                if (!mysqli_stmt_execute($accountLock)) {
+                    $accountsLocked = false;
+                    break;
+                }
+                $accountResult = mysqli_stmt_get_result($accountLock);
+                $lockedAccount = $accountResult === false ? null : mysqli_fetch_assoc($accountResult);
+                if (
+                    !$lockedAccount
+                    || $lockedAccount['estado'] !== 'activo'
+                    || $lockedAccount['role_name'] !== $expectedRoles[$accountId]
+                ) {
+                    $accountsLocked = false;
+                    break;
+                }
+            }
+            mysqli_stmt_close($accountLock);
+        }
+
+        if (!$accountsLocked) {
+            mysqli_rollback($db);
+            flash('error', 'No fue posible validar las cuentas relacionadas con esta reserva.');
+            redirect('catalog');
+        }
+
+        $serviceLock = mysqli_prepare(
+            $db,
+            'SELECT trabajador_id, estado, disponible FROM servicio WHERE id = ? LIMIT 1 FOR UPDATE'
+        );
+        if ($serviceLock === false) {
+            mysqli_rollback($db);
+            flash('error', 'No fue posible verificar la disponibilidad del servicio.');
+            redirect('catalog');
+        }
+        mysqli_stmt_bind_param($serviceLock, 'i', $serviceId);
+        $serviceLocked = mysqli_stmt_execute($serviceLock);
+        $lockedServiceResult = $serviceLocked ? mysqli_stmt_get_result($serviceLock) : false;
+        $lockedService = $lockedServiceResult === false ? null : mysqli_fetch_assoc($lockedServiceResult);
+        mysqli_stmt_close($serviceLock);
+        if (
+            !$lockedService
+            || (int) $lockedService['trabajador_id'] !== (int) $service['trabajador_id']
+            || $lockedService['estado'] !== 'activo'
+            || (int) $lockedService['disponible'] !== 1
+        ) {
+            mysqli_rollback($db);
+            flash('error', 'El servicio ya no está disponible.');
+            redirect('catalog');
+        }
+
         $slotStart = $scheduledAt->format('Y-m-d H:i:s');
         $availability = mysqli_prepare(
             $db,
@@ -326,8 +412,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                  AND DATE_ADD(TIMESTAMP(r.fecha, r.hora), INTERVAL 1 HOUR) > ?
                AND r.estado IN ("pendiente", "confirmada")
                AND (r.cliente_id = ? OR s.trabajador_id = ?)
-             LIMIT 1'
+             LIMIT 1
+             FOR UPDATE'
         );
+        if ($availability === false) {
+            mysqli_rollback($db);
+            flash('error', 'No fue posible comprobar el horario solicitado.');
+            redirect('catalog');
+        }
         mysqli_stmt_bind_param(
             $availability,
             'ssii',
@@ -336,24 +428,51 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             $_SESSION['user']['id'],
             $service['trabajador_id']
         );
-        mysqli_stmt_execute($availability);
+        if (!mysqli_stmt_execute($availability)) {
+            error_log('OficioClick reservation availability query failed: ' . mysqli_stmt_error($availability));
+            mysqli_stmt_close($availability);
+            mysqli_rollback($db);
+            flash('error', 'No fue posible comprobar el horario solicitado.');
+            redirect('catalog');
+        }
         $availabilityResult = mysqli_stmt_get_result($availability);
+        if ($availabilityResult === false) {
+            error_log('OficioClick reservation availability result failed: ' . mysqli_stmt_error($availability));
+            mysqli_stmt_close($availability);
+            mysqli_rollback($db);
+            flash('error', 'No fue posible comprobar el horario solicitado.');
+            redirect('catalog');
+        }
         $conflictingReservation = mysqli_fetch_assoc($availabilityResult);
         mysqli_stmt_close($availability);
 
         if ($conflictingReservation) {
+            mysqli_rollback($db);
             flash('error', 'Ese horario ya no está disponible para el cliente o el trabajador.');
             redirect('catalog');
         }
 
         $stmt = mysqli_prepare($db, 'INSERT INTO reserva (cliente_id, servicio_id, fecha, hora, direccion_atencion, estado) VALUES (?, ?, ?, ?, ?, "pendiente")');
+        if ($stmt === false) {
+            mysqli_rollback($db);
+            flash('error', 'No fue posible preparar la solicitud de reserva.');
+            redirect('catalog');
+        }
         mysqli_stmt_bind_param($stmt, 'iisss', $_SESSION['user']['id'], $serviceId, $date, $time, $address);
         if (!mysqli_stmt_execute($stmt)) {
+            error_log('OficioClick reservation insert failed: ' . mysqli_stmt_error($stmt));
             mysqli_stmt_close($stmt);
+            mysqli_rollback($db);
             flash('error', 'No se pudo registrar la reserva. Inténtalo nuevamente.');
             redirect('catalog');
         }
         mysqli_stmt_close($stmt);
+        if (!mysqli_commit($db)) {
+            error_log('OficioClick reservation transaction commit failed: ' . mysqli_error($db));
+            mysqli_rollback($db);
+            flash('error', 'No se pudo confirmar la solicitud de reserva. Inténtalo nuevamente.');
+            redirect('catalog');
+        }
 
         flash('success', 'La reserva se registró correctamente.');
         redirect('client-dashboard');
@@ -941,9 +1060,7 @@ switch ($page) {
         }
         exit;
     case 'logout':
-        session_destroy();
         redirect('home');
-        break;
     default:
         $view = 'home';
         $viewData['services'] = fetchServices(['available_only' => true]);

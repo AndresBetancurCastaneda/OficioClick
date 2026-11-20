@@ -6,8 +6,9 @@
                 <h1>Iniciar sesión</h1>
             </div>
 
-            <form method="post" action="index.php">
+            <form method="post" action="index.php"<?php echo $formErrorDescription; ?>>
                 <input type="hidden" name="action" value="login">
+                <?php echo csrfField(); ?>
                 <label>
                     Correo electrónico
                     <input type="email" name="email" required>

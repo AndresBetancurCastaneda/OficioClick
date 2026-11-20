@@ -1,0 +1,19 @@
+flowchart LR
+    Client["Cliente"]
+    Worker["Trabajador"]
+    Admin["Administrador"]
+    Browser["Navegador web"]
+
+    subgraph App["OficioClick — plataforma web"]
+        PHP["Aplicación PHP 8.2<br/>páginas renderizadas"]
+    end
+
+    DB[("MySQL 8.0<br/>datos relacionales")]
+    Fonts["Google Fonts<br/>Inter (opcional)"]
+
+    Client --> Browser
+    Worker --> Browser
+    Admin --> Browser
+    Browser -->|"HTTP / HTTPS"| PHP
+    PHP -->|"MySQLi"| DB
+    Browser -.->|"HTTPS para tipografía"| Fonts

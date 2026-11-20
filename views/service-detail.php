@@ -15,8 +15,9 @@
         <?php if (isLoggedIn() && $_SESSION['user']['role'] === 'Cliente'): ?>
             <aside class="booking-card">
                 <h3>Reservar servicio</h3>
-                <form method="post" action="index.php">
+                <form method="post" action="index.php"<?php echo $formErrorDescription; ?>>
                     <input type="hidden" name="action" value="reserve-service">
+                    <?php echo csrfField(); ?>
                     <input type="hidden" name="service_id" value="<?php echo (int) $service['id']; ?>">
 
                     <label>

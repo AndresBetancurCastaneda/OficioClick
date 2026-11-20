@@ -1,0 +1,36 @@
+sequenceDiagram
+    actor U as Usuario
+    participant B as Navegador
+    participant P as public/index.php
+    participant H as app/helpers.php
+    participant D as MySQL 8.0
+
+    rect rgb(239, 246, 255)
+        U->>B: Enviar correo y contraseña
+        B->>P: POST login + token CSRF
+        P->>P: Validar token CSRF
+        P->>H: Buscar usuario por correo
+        H->>D: SELECT preparado
+        D-->>H: Usuario, rol, estado y hash
+        H-->>P: Registro de usuario
+        P->>P: Verificar estado activo y password_verify
+        P-->>B: Regenerar sesión y redirigir según rol
+    end
+
+    rect rgb(240, 253, 244)
+        U->>B: Solicitar fecha y hora de servicio
+        B->>P: POST reserve-service + token CSRF
+        P->>P: Validar token, rol Cliente y datos
+        P->>D: Iniciar transacción
+        P->>D: Bloquear filas Cliente y Trabajador en orden
+        P->>D: Bloquear y validar Servicio disponible
+        P->>D: Consultar intervalos solapados
+        alt Horario disponible
+            P->>D: Insertar reserva pendiente
+            P->>D: Confirmar transacción
+            P-->>B: Mensaje de solicitud registrada
+        else Conflicto o fallo
+            P->>D: Revertir transacción
+            P-->>B: Mensaje de horario no disponible
+        end
+    end

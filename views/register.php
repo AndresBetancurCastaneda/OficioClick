@@ -5,8 +5,9 @@
                 <span class="eyebrow">Registro</span>
                 <h1>Crear una cuenta en OficioClick</h1>
             </div>
-            <form method="post" action="index.php" class="form-grid">
+            <form method="post" action="index.php" class="form-grid"<?php echo $formErrorDescription; ?>>
                 <input type="hidden" name="action" value="register">
+                <?php echo csrfField(); ?>
 
                 <label>
                     Nombre

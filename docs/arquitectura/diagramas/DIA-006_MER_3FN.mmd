@@ -1,0 +1,67 @@
+erDiagram
+    ROL {
+        int id PK
+        varchar nombre UK
+    }
+    CIUDAD {
+        int id PK
+        varchar nombre UK
+    }
+    CATEGORIA {
+        int id PK
+        varchar nombre UK
+    }
+    USUARIO {
+        int id PK
+        int rol_id FK
+        int ciudad_id FK
+        varchar nombre
+        varchar apellido
+        varchar email UK
+        varchar documento_identidad UK
+        varchar password_hash
+        enum estado
+    }
+    ADMIN_ACTION {
+        bigint id PK
+        int admin_id FK
+        varchar action
+        varchar entity
+        int entity_id
+        text details
+        timestamp created_at
+    }
+    SERVICIO {
+        int id PK
+        int trabajador_id FK
+        int categoria_id FK
+        varchar titulo
+        text descripcion
+        decimal precio "CHECK > 0"
+        enum estado
+        boolean disponible
+    }
+    RESERVA {
+        int id PK
+        int cliente_id FK
+        int servicio_id FK
+        date fecha
+        time hora
+        varchar direccion_atencion
+        enum estado
+    }
+    CALIFICACION {
+        int id PK
+        int reserva_id FK_UK
+        tinyint estrellas "CHECK 1..5"
+        text comentario
+    }
+
+    ROL ||--o{ USUARIO : asigna
+    CIUDAD o|--o{ USUARIO : ubica
+    USUARIO ||--o{ ADMIN_ACTION : ejecuta
+    USUARIO ||--o{ SERVICIO : publica
+    CATEGORIA ||--o{ SERVICIO : clasifica
+    USUARIO ||--o{ RESERVA : solicita
+    SERVICIO ||--o{ RESERVA : recibe
+    RESERVA ||--o| CALIFICACION : obtiene
