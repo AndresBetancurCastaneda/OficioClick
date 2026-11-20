@@ -42,7 +42,12 @@ document.addEventListener('DOMContentLoaded', function () {
 
   const forms = document.querySelectorAll('form');
   forms.forEach(function (form) {
-    form.addEventListener('submit', function () {
+    form.addEventListener('submit', function (event) {
+      if (form.dataset.confirm && !window.confirm(form.dataset.confirm)) {
+        event.preventDefault();
+        return;
+      }
+
       const button = form.querySelector('button[type="submit"]');
       if (!button) return;
       const currentText = button.textContent.trim();

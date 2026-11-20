@@ -47,7 +47,8 @@
                                 <tr>
                                     <th>Servicio</th>
                                     <th>Categoría</th>
-                                    <th>Precio</th>
+                                    <th>Precio por hora</th>
+                                    <th>Estado</th>
                                     <th>Acciones</th>
                                 </tr>
                             </thead>
@@ -57,8 +58,43 @@
                                         <td><?php echo e($service['titulo']); ?></td>
                                         <td><?php echo e($service['category_name']); ?></td>
                                         <td><?php echo formatMoney((float) $service['precio']); ?></td>
+                                        <td><span class="status-badge status-<?php echo e(strtolower($service['estado'])); ?>"><?php echo e(ucfirst($service['estado'])); ?></span></td>
                                         <td>
+                                            <details class="service-edit">
+                                                <summary class="text-link">Editar</summary>
+                                                <form method="post" action="index.php" class="stacked-form">
+                                                    <input type="hidden" name="action" value="update-service">
+                                                    <input type="hidden" name="service_id" value="<?php echo (int) $service['id']; ?>">
+                                                    <label>
+                                                        Título
+                                                        <input type="text" name="titulo" value="<?php echo e($service['titulo']); ?>" required>
+                                                    </label>
+                                                    <label>
+                                                        Descripción
+                                                        <textarea name="descripcion" rows="3" required><?php echo e($service['descripcion']); ?></textarea>
+                                                    </label>
+                                                    <label>
+                                                        Categoría
+                                                        <select name="categoria" required>
+                                                            <?php foreach ($categories as $category): ?>
+                                                                <option value="<?php echo e($category['nombre']); ?>" <?php echo $service['category_name'] === $category['nombre'] ? 'selected' : ''; ?>><?php echo e($category['nombre']); ?></option>
+                                                            <?php endforeach; ?>
+                                                        </select>
+                                                    </label>
+                                                    <label>
+                                                        Precio por hora
+                                                        <input type="number" min="1" step="1000" name="precio" value="<?php echo e((string) $service['precio']); ?>" required>
+                                                    </label>
+                                                    <button class="btn btn-primary btn-small" type="submit">Guardar cambios</button>
+                                                </form>
+                                            </details>
                                             <form method="post" action="index.php" class="inline-form compact-inline">
+                                                <input type="hidden" name="action" value="toggle-service-status">
+                                                <input type="hidden" name="service_id" value="<?php echo (int) $service['id']; ?>">
+                                                <input type="hidden" name="status" value="<?php echo $service['estado'] === 'activo' ? 'inactivo' : 'activo'; ?>">
+                                                <button class="btn btn-secondary btn-small" type="submit"><?php echo $service['estado'] === 'activo' ? 'Desactivar' : 'Activar'; ?></button>
+                                            </form>
+                                            <form method="post" action="index.php" class="inline-form compact-inline" data-confirm="¿Eliminar este servicio? Si tiene reservas asociadas no se podrá borrar.">
                                                 <input type="hidden" name="action" value="delete-service">
                                                 <input type="hidden" name="service_id" value="<?php echo (int) $service['id']; ?>">
                                                 <button class="btn btn-secondary btn-small" type="submit">Eliminar</button>
@@ -85,6 +121,7 @@
                                 <th>Cliente</th>
                                 <th>Servicio</th>
                                 <th>Fecha</th>
+                                <th>Dirección</th>
                                 <th>Estado</th>
                                 <th>Cambiar</th>
                             </tr>
@@ -95,6 +132,7 @@
                                     <td><?php echo e($reservation['client_name'] . ' ' . $reservation['client_lastname']); ?></td>
                                     <td><?php echo e($reservation['titulo']); ?></td>
                                     <td><?php echo e($reservation['fecha']); ?> - <?php echo e($reservation['hora']); ?></td>
+                                    <td><?php echo e($reservation['direccion_atencion'] ?? 'No registrada'); ?></td>
                                     <td><span class="status-badge status-<?php echo e(strtolower($reservation['estado'])); ?>"><?php echo e($reservation['estado']); ?></span></td>
                                     <td>
                                         <?php if (in_array($reservation['estado'], ['pendiente', 'confirmada'], true)): ?>

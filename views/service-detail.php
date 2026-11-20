@@ -5,7 +5,8 @@
             <h1><?php echo e($service['titulo']); ?></h1>
             <div class="detail-meta">
                 <span>Proveedor: <?php echo e($service['worker_name'] . ' ' . $service['worker_lastname']); ?></span>
-                <span>✦ <?php echo number_format(getAverageRating((int) $service['id']), 1); ?> / 5</span>
+                <?php $serviceRating = getAverageRating((int) $service['id']); ?>
+                <span><?php echo $serviceRating === null ? 'Sin calificaciones' : '✦ ' . number_format($serviceRating, 1) . ' / 5'; ?></span>
             </div>
             <p><?php echo e($service['descripcion']); ?></p>
             <div class="detail-price"><?php echo formatMoney((float) $service['precio']); ?> por hora</div>
@@ -25,6 +26,10 @@
                     <label>
                         Hora
                         <input type="time" name="reservation_time" required>
+                    </label>
+                    <label>
+                        Dirección de atención
+                        <input type="text" name="service_address" maxlength="255" autocomplete="street-address" required>
                     </label>
                     <button class="btn btn-primary btn-block" type="submit">Solicitar reserva</button>
                 </form>

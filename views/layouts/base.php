@@ -8,23 +8,24 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="assets/css/styles.css">
+    <link rel="stylesheet" href="assets/css/styles.css?v=<?php echo (int) filemtime(APP_ROOT . '/public/assets/css/styles.css'); ?>">
 </head>
 <body>
     <header class="topbar">
         <div class="container nav-wrap">
             <a class="brand" href="index.php?page=home">
-                <span class="brand-mark">O</span>
+                <span class="brand-mark" aria-hidden="true"><svg class="brand-icon" viewBox="0 0 24 24" fill="none"><path d="M14.4 6.1a5 5 0 0 0 6 6l-3.1-3.1-3.4 3.4 3.1 3.1a5 5 0 0 0-6-6l-7.7 7.7a2.1 2.1 0 0 0 3 3l7.7-7.7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
                 <span>OficioClick</span>
             </a>
 
-            <button class="nav-toggle" type="button" aria-expanded="false" aria-controls="primary-navigation">
-                Menú
+            <button class="nav-toggle" type="button" aria-expanded="false" aria-controls="primary-navigation" aria-label="Abrir menú de navegación">
+                <span class="nav-toggle-icon" aria-hidden="true"></span>
+                <span class="sr-only">Abrir menú de navegación</span>
             </button>
 
             <nav class="main-nav" id="primary-navigation">
                 <a href="index.php?page=home">Inicio</a>
-                <a href="index.php?page=catalog">Catálogo</a>
+                <a href="index.php?page=catalog">Buscar servicios</a>
                 <?php if (isLoggedIn()): ?>
                     <?php if ($_SESSION['user']['role'] === 'Cliente'): ?>
                         <a href="index.php?page=client-dashboard">Mi panel</a>
@@ -62,15 +63,25 @@
     </main>
 
     <footer class="site-footer">
-        <div class="container footer-content">
-            <div>
-                <h3>OficioClick</h3>
-                <p>Contrata servicios por horas confiables en Medellín.</p>
+        <div class="container footer-grid">
+            <div class="footer-brand">
+                <a class="brand brand-light" href="index.php?page=home">
+                    <span class="brand-mark" aria-hidden="true"><svg class="brand-icon" viewBox="0 0 24 24" fill="none"><path d="M14.4 6.1a5 5 0 0 0 6 6l-3.1-3.1-3.4 3.4 3.1 3.1a5 5 0 0 0-6-6l-7.7 7.7a2.1 2.1 0 0 0 3 3l7.7-7.7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+                    <span>OficioClick</span>
+                </a>
+                <p>Servicios confiables por horas en Medellín y el área metropolitana.</p>
             </div>
             <div>
+                <h2>Explora</h2>
+                <a href="index.php?page=catalog">Buscar servicios</a>
+                <a href="index.php?page=register">Crear una cuenta</a>
+            </div>
+            <div>
+                <h2>Categorías</h2>
                 <p>Plomería · Electricidad · Obra blanca · Aseo general</p>
             </div>
         </div>
+        <div class="container footer-bottom">© <?php echo date('Y'); ?> OficioClick. Servicios confiables para tu hogar.</div>
     </footer>
 
     <script src="assets/js/app.js"></script>

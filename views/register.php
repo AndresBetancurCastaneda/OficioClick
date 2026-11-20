@@ -22,15 +22,24 @@
                 </label>
                 <label>
                     Teléfono
-                    <input type="tel" name="telefono">
+                    <input type="tel" name="telefono" required>
                 </label>
                 <label>
                     Documento de identidad
-                    <input type="text" name="documento_identidad">
+                    <input type="text" name="documento_identidad" required>
                 </label>
                 <label>
                     Dirección
-                    <input type="text" name="direccion">
+                    <input type="text" name="direccion" required>
+                </label>
+                <label>
+                    Ciudad
+                    <select name="ciudad_id" required>
+                        <option value="">Selecciona tu ciudad</option>
+                        <?php foreach ($cities as $city): ?>
+                            <option value="<?php echo (int) $city['id']; ?>"><?php echo e($city['nombre']); ?></option>
+                        <?php endforeach; ?>
+                    </select>
                 </label>
                 <label>
                     Contraseña

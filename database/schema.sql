@@ -17,9 +17,17 @@ CREATE TABLE IF NOT EXISTS `categoria` (
   UNIQUE KEY `uq_categoria_nombre` (`nombre`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+CREATE TABLE IF NOT EXISTS `ciudad` (
+  `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `nombre` VARCHAR(100) NOT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_ciudad_nombre` (`nombre`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 CREATE TABLE IF NOT EXISTS `usuario` (
   `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
   `rol_id` INT UNSIGNED NOT NULL,
+  `ciudad_id` INT UNSIGNED DEFAULT NULL,
   `nombre` VARCHAR(100) NOT NULL,
   `apellido` VARCHAR(100) NOT NULL,
   `email` VARCHAR(150) NOT NULL,
@@ -34,7 +42,23 @@ CREATE TABLE IF NOT EXISTS `usuario` (
   UNIQUE KEY `uq_usuario_email` (`email`),
   UNIQUE KEY `uq_usuario_documento` (`documento_identidad`),
   KEY `idx_usuario_rol` (`rol_id`),
-  CONSTRAINT `fk_usuario_rol` FOREIGN KEY (`rol_id`) REFERENCES `rol` (`id`)
+  KEY `idx_usuario_ciudad` (`ciudad_id`),
+  CONSTRAINT `fk_usuario_rol` FOREIGN KEY (`rol_id`) REFERENCES `rol` (`id`),
+  CONSTRAINT `fk_usuario_ciudad` FOREIGN KEY (`ciudad_id`) REFERENCES `ciudad` (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `admin_action` (
+  `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `admin_id` INT UNSIGNED NOT NULL,
+  `action` VARCHAR(60) NOT NULL,
+  `entity` VARCHAR(60) NOT NULL,
+  `entity_id` INT UNSIGNED DEFAULT NULL,
+  `details` TEXT DEFAULT NULL,
+  `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `idx_admin_action_admin_date` (`admin_id`, `created_at`),
+  KEY `idx_admin_action_entity` (`entity`, `entity_id`),
+  CONSTRAINT `fk_admin_action_admin` FOREIGN KEY (`admin_id`) REFERENCES `usuario` (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS `servicio` (
@@ -62,6 +86,7 @@ CREATE TABLE IF NOT EXISTS `reserva` (
   `servicio_id` INT UNSIGNED NOT NULL,
   `fecha` DATE NOT NULL,
   `hora` TIME NOT NULL,
+  `direccion_atencion` VARCHAR(255) DEFAULT NULL,
   `estado` ENUM('pendiente','confirmada','finalizada','cancelada') NOT NULL DEFAULT 'pendiente',
   `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
@@ -74,20 +99,19 @@ CREATE TABLE IF NOT EXISTS `reserva` (
 CREATE TABLE IF NOT EXISTS `calificacion` (
   `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
   `reserva_id` INT UNSIGNED NOT NULL,
-  `cliente_id` INT UNSIGNED NOT NULL,
-  `trabajador_id` INT UNSIGNED NOT NULL,
   `estrellas` TINYINT UNSIGNED NOT NULL,
   `comentario` TEXT DEFAULT NULL,
   `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
   UNIQUE KEY `uq_calificacion_reserva` (`reserva_id`),
-  KEY `idx_calificacion_cliente` (`cliente_id`),
-  KEY `idx_calificacion_trabajador` (`trabajador_id`),
   CONSTRAINT `chk_calificacion_estrellas` CHECK (`estrellas` BETWEEN 1 AND 5),
-  CONSTRAINT `fk_calificacion_reserva` FOREIGN KEY (`reserva_id`) REFERENCES `reserva` (`id`),
-  CONSTRAINT `fk_calificacion_cliente` FOREIGN KEY (`cliente_id`) REFERENCES `usuario` (`id`),
-  CONSTRAINT `fk_calificacion_trabajador` FOREIGN KEY (`trabajador_id`) REFERENCES `usuario` (`id`)
+  CONSTRAINT `fk_calificacion_reserva` FOREIGN KEY (`reserva_id`) REFERENCES `reserva` (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+INSERT INTO `ciudad` (`nombre`) VALUES
+  ('Medellín'), ('Bello'), ('Envigado'), ('Itagüí'), ('Sabaneta'),
+  ('La Estrella'), ('Copacabana'), ('Girardota'), ('Barbosa'), ('Caldas')
+ON DUPLICATE KEY UPDATE `nombre` = VALUES(`nombre`);
 
 INSERT INTO `rol` (`nombre`) VALUES ('Administrador')
 ON DUPLICATE KEY UPDATE `nombre` = VALUES(`nombre`);
@@ -105,25 +129,35 @@ ON DUPLICATE KEY UPDATE `nombre` = VALUES(`nombre`);
 INSERT INTO `categoria` (`nombre`) VALUES ('Aseo general')
 ON DUPLICATE KEY UPDATE `nombre` = VALUES(`nombre`);
 
-INSERT INTO `usuario` (`rol_id`, `nombre`, `apellido`, `email`, `telefono`, `documento_identidad`, `direccion`, `password_hash`, `estado`)
-SELECT 1, 'Admin', 'OficioClick', 'admin@oficioclick.com', '3000000000', '1000000001', 'Medellín', '$2y$10$.NbKWZsEOhGUMgrtq6HYCuH2OcSmTelpKdxrjp9EpHfeT1.M3f4pS', 'activo'
-WHERE NOT EXISTS (SELECT 1 FROM `usuario` WHERE `email` = 'admin@oficioclick.com');
+INSERT INTO `usuario` (`rol_id`, `ciudad_id`, `nombre`, `apellido`, `email`, `telefono`, `documento_identidad`, `direccion`, `password_hash`, `estado`)
+SELECT r.id, c.id, 'Admin', 'OficioClick', 'admin@oficioclick.com', '3000000000', '1000000001', 'Medellín', '$2y$10$.NbKWZsEOhGUMgrtq6HYCuH2OcSmTelpKdxrjp9EpHfeT1.M3f4pS', 'activo'
+FROM `rol` r INNER JOIN `ciudad` c ON c.nombre = 'Medellín'
+WHERE r.nombre = 'Administrador'
+AND NOT EXISTS (SELECT 1 FROM `usuario` WHERE `email` = 'admin@oficioclick.com');
 
-INSERT INTO `usuario` (`rol_id`, `nombre`, `apellido`, `email`, `telefono`, `documento_identidad`, `direccion`, `password_hash`, `estado`)
-SELECT 2, 'Carlos', 'Pérez', 'carlos@oficioclick.com', '3001112233', '1000000040', 'Bello', '$2y$10$.NbKWZsEOhGUMgrtq6HYCuH2OcSmTelpKdxrjp9EpHfeT1.M3f4pS', 'activo'
-WHERE NOT EXISTS (SELECT 1 FROM `usuario` WHERE `email` = 'carlos@oficioclick.com');
+INSERT INTO `usuario` (`rol_id`, `ciudad_id`, `nombre`, `apellido`, `email`, `telefono`, `documento_identidad`, `direccion`, `password_hash`, `estado`)
+SELECT r.id, c.id, 'Carlos', 'Pérez', 'carlos@oficioclick.com', '3001112233', '1000000040', 'Bello', '$2y$10$.NbKWZsEOhGUMgrtq6HYCuH2OcSmTelpKdxrjp9EpHfeT1.M3f4pS', 'activo'
+FROM `rol` r INNER JOIN `ciudad` c ON c.nombre = 'Bello'
+WHERE r.nombre = 'Trabajador'
+AND NOT EXISTS (SELECT 1 FROM `usuario` WHERE `email` = 'carlos@oficioclick.com');
 
-INSERT INTO `usuario` (`rol_id`, `nombre`, `apellido`, `email`, `telefono`, `documento_identidad`, `direccion`, `password_hash`, `estado`)
-SELECT 2, 'María', 'Gómez', 'maria@oficioclick.com', '3001112234', '1000000041', 'Envigado', '$2y$10$.NbKWZsEOhGUMgrtq6HYCuH2OcSmTelpKdxrjp9EpHfeT1.M3f4pS', 'activo'
-WHERE NOT EXISTS (SELECT 1 FROM `usuario` WHERE `email` = 'maria@oficioclick.com');
+INSERT INTO `usuario` (`rol_id`, `ciudad_id`, `nombre`, `apellido`, `email`, `telefono`, `documento_identidad`, `direccion`, `password_hash`, `estado`)
+SELECT r.id, c.id, 'María', 'Gómez', 'maria@oficioclick.com', '3001112234', '1000000041', 'Envigado', '$2y$10$.NbKWZsEOhGUMgrtq6HYCuH2OcSmTelpKdxrjp9EpHfeT1.M3f4pS', 'activo'
+FROM `rol` r INNER JOIN `ciudad` c ON c.nombre = 'Envigado'
+WHERE r.nombre = 'Trabajador'
+AND NOT EXISTS (SELECT 1 FROM `usuario` WHERE `email` = 'maria@oficioclick.com');
 
-INSERT INTO `usuario` (`rol_id`, `nombre`, `apellido`, `email`, `telefono`, `documento_identidad`, `direccion`, `password_hash`, `estado`)
-SELECT 3, 'Ana', 'Ríos', 'ana@oficioclick.com', '3002223344', '1000000042', 'Medellín', '$2y$10$.NbKWZsEOhGUMgrtq6HYCuH2OcSmTelpKdxrjp9EpHfeT1.M3f4pS', 'activo'
-WHERE NOT EXISTS (SELECT 1 FROM `usuario` WHERE `email` = 'ana@oficioclick.com');
+INSERT INTO `usuario` (`rol_id`, `ciudad_id`, `nombre`, `apellido`, `email`, `telefono`, `documento_identidad`, `direccion`, `password_hash`, `estado`)
+SELECT r.id, c.id, 'Ana', 'Ríos', 'ana@oficioclick.com', '3002223344', '1000000042', 'Medellín', '$2y$10$.NbKWZsEOhGUMgrtq6HYCuH2OcSmTelpKdxrjp9EpHfeT1.M3f4pS', 'activo'
+FROM `rol` r INNER JOIN `ciudad` c ON c.nombre = 'Medellín'
+WHERE r.nombre = 'Cliente'
+AND NOT EXISTS (SELECT 1 FROM `usuario` WHERE `email` = 'ana@oficioclick.com');
 
-INSERT INTO `usuario` (`rol_id`, `nombre`, `apellido`, `email`, `telefono`, `documento_identidad`, `direccion`, `password_hash`, `estado`)
-SELECT 3, 'Luis', 'Torres', 'luis@oficioclick.com', '3002223345', '1000000043', 'Itagüí', '$2y$10$.NbKWZsEOhGUMgrtq6HYCuH2OcSmTelpKdxrjp9EpHfeT1.M3f4pS', 'activo'
-WHERE NOT EXISTS (SELECT 1 FROM `usuario` WHERE `email` = 'luis@oficioclick.com');
+INSERT INTO `usuario` (`rol_id`, `ciudad_id`, `nombre`, `apellido`, `email`, `telefono`, `documento_identidad`, `direccion`, `password_hash`, `estado`)
+SELECT r.id, c.id, 'Luis', 'Torres', 'luis@oficioclick.com', '3002223345', '1000000043', 'Itagüí', '$2y$10$.NbKWZsEOhGUMgrtq6HYCuH2OcSmTelpKdxrjp9EpHfeT1.M3f4pS', 'activo'
+FROM `rol` r INNER JOIN `ciudad` c ON c.nombre = 'Itagüí'
+WHERE r.nombre = 'Cliente'
+AND NOT EXISTS (SELECT 1 FROM `usuario` WHERE `email` = 'luis@oficioclick.com');
 
 INSERT INTO `servicio` (`trabajador_id`, `categoria_id`, `titulo`, `descripcion`, `precio`, `estado`, `disponible`)
 SELECT u.id, c.id, 'Reparación de fugas', 'Solución rápida de fugas en cocina, baño y tuberías.', 12000, 'activo', 1
@@ -167,9 +201,8 @@ JOIN `servicio` s ON s.titulo = 'Instalación eléctrica residencial'
 WHERE c.email = 'luis@oficioclick.com'
 AND NOT EXISTS (SELECT 1 FROM `reserva` WHERE `servicio_id` = s.id AND `cliente_id` = c.id);
 
-INSERT INTO `calificacion` (`reserva_id`, `cliente_id`, `trabajador_id`, `estrellas`, `comentario`)
-SELECT r.id, r.cliente_id, s.trabajador_id, 5, 'Servicio muy puntual y bien realizado.'
+INSERT INTO `calificacion` (`reserva_id`, `estrellas`, `comentario`)
+SELECT r.id, 5, 'Servicio muy puntual y bien realizado.'
 FROM `reserva` r
-JOIN `servicio` s ON s.id = r.servicio_id
 WHERE r.estado = 'finalizada'
 AND NOT EXISTS (SELECT 1 FROM `calificacion` WHERE `reserva_id` = r.id);
