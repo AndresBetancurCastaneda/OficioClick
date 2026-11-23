@@ -1,0 +1,71 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Create CI environment
+        run: |
+          cat > .env <<'EOF'
+          APP_PORT=8080
+          DB_NAME=oficioclick
+          DB_USER=oficioclick_app
+          DB_PASS=ci_local_password
+          DB_ROOT_PASS=ci_root_password
+          EOF
+
+      - name: Validate Compose
+        run: docker compose config --quiet
+
+      - name: Build containers
+        run: docker compose build
+
+      - name: Start containers
+        run: docker compose up -d
+
+      - name: Wait for database
+        run: |
+          for i in $(seq 1 30); do
+            if docker compose exec -T db mysqladmin ping -uroot -pci_root_password --silent; then
+              exit 0
+            fi
+            sleep 2
+          done
+          exit 1
+
+      - name: PHP lint
+        run: |
+          docker compose exec -T web sh -lc '
+            find app public views tests -name "*.php" -print |
+            while IFS= read -r file; do php -l "/var/www/html/$file" || exit 1; done
+          '
+
+      - name: Requirements smoke
+        run: docker compose exec -T web php /var/www/html/tests/requirements_smoke.php
+
+      - name: Security helper smoke
+        run: docker compose exec -T web php /var/www/html/tests/security_helpers_smoke.php
+
+      - name: P0/P1 smoke
+        run: docker compose exec -T web php /var/www/html/tests/p0_p1_smoke.php
+
+      - name: Verify HTTP
+        run: |
+          curl --fail --retry 10 --retry-delay 2 http://localhost:8080/
+          curl --fail http://localhost:8080/index.php?page=login
+          curl --fail http://localhost:8080/index.php?page=register
+          curl --fail http://localhost:8080/index.php?page=catalog
+
+      - name: Stop containers
+        if: always()
+        run: docker compose down -v

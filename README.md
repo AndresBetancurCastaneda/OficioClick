@@ -125,6 +125,17 @@ Las verificaciones de seguridad sin dependencia de la base de datos se ejecutan 
 
 El puerto web publicado por Docker es `APP_PORT` (8080 por defecto); MySQL escucha en 3306 dentro de la red de Compose y no se publica al host. En XAMPP, Apache/MySQL usan los puertos definidos en esa instalación y el esquema debe importarse manualmente.
 
+## QA piloto reproducible
+
+- El fixture ficticio completo está en `tests/fixtures/seed_pilot_100.sql`.
+- La verificación se encuentra en `tests/fixtures/verify_pilot_100.sql`.
+- Las metas sintéticas son 100 usuarios, 50 servicios, 30 reservas, 20 calificaciones y promedio 3.60.
+- El fixture no debe cargarse en la base real; úselo en una base desechable de QA.
+- Las pruebas P0/P1 se ejecutan con `docker compose exec -T web php /var/www/html/tests/p0_p1_smoke.php`.
+- La carga sintética se ejecuta con `python scripts/load_check.py http://localhost:8080`.
+- La restauración desechable se ejecuta con `scripts/qa_backup_restore.ps1`.
+- El guion UAT se encuentra en `docs/qa/UAT-GUION.md`.
+
 ### Observaciones de alineación con los documentos fuente
 
 Los documentos académicos se auditaron sin modificarlos. Antes de declarar la trazabilidad documental cerrada, el equipo/instructor debe resolver estas diferencias:
