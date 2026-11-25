@@ -19,7 +19,7 @@
                 </select>
             </label>
             <label>
-                Búsqueda
+                Busca por servicio
                 <input type="text" name="search" value="<?php echo e($filters['search']); ?>" placeholder="Ej. plomería, limpieza...">
             </label>
             <label>

@@ -136,7 +136,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
 
         $user = fetchUserByEmail($email);
         if (!$user || $user['estado'] !== 'activo' || !password_verify($password, $user['password_hash'])) {
-            flash('error', 'Credenciales incorrectas.');
+            flash('error', 'Credenciales inválidas.');
             redirect('login');
         }
 

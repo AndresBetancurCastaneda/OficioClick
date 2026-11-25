@@ -21,15 +21,16 @@ Validar con participantes controlados los flujos reales del MVP. Las cuentas fic
 ## Casos
 
 1. Registro de usuario.
-2. Inicio de sesión por rol.
-3. Búsqueda por categoría y calificación.
-4. Solicitud de reserva.
-5. Confirmación de reserva por trabajador.
-6. Finalización de reserva.
-7. Calificación 1–5.
-8. Gestión administrativa de usuario.
-9. Exportación de reporte CSV.
-10. Uso móvil y navegación por teclado.
+2. Inicio de sesión por rol; verificar “Credenciales inválidas.” con credenciales no válidas.
+3. Confirmar que la recuperación de contraseña se identifica como no disponible en esta versión.
+4. Búsqueda por categoría, texto, rango de precio, calificación mínima y disponibilidad; revisar el estado vacío.
+5. Solicitud de reserva.
+6. Confirmación de reserva por trabajador.
+7. Finalización de reserva.
+8. Calificación 1–5.
+9. Gestión administrativa de usuario.
+10. Filtros de reservas y exportación de reporte CSV.
+11. Uso móvil y navegación por teclado, incluido el menú y la visualización completa de los filtros.
 
 ## Evidencia mínima
 

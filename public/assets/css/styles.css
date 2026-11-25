@@ -422,7 +422,8 @@ input, select, textarea {
 
 .filter-box {
   display: grid;
-  grid-template-columns: 1.1fr 1.5fr 0.9fr auto;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  align-items: end;
   gap: 1rem;
   background: var(--white);
   border: 1px solid var(--border);
@@ -432,12 +433,21 @@ input, select, textarea {
   box-shadow: 0 10px 20px rgba(15,23,42,0.04);
 }
 
+.filter-box > label {
+  min-width: 0;
+}
+
+.filter-box > label:not(.checkbox-line) input,
+.filter-box > label:not(.checkbox-line) select {
+  min-width: 0;
+}
+
 .checkbox-line {
   display: flex;
   align-items: center;
   gap: 0.6rem;
-  margin-top: auto;
-  padding-top: 1.7rem;
+  margin: 0;
+  padding: 0 0 0.8rem;
 }
 
 .checkbox-line input {
@@ -793,6 +803,7 @@ th {
   .nav-wrap { position: relative; flex-wrap: wrap; min-height: 70px; gap: 10px 12px; }
   .brand { margin-right: auto; }
   .nav-actions { flex-wrap: wrap; }
+  .filter-box { grid-template-columns: repeat(2,minmax(0,1fr)); }
   .hero-grid { grid-template-columns: 1fr; }
   .category-grid, .product-grid { grid-template-columns: repeat(2,minmax(0,1fr)); }
   .hero-visual { min-height: 360px; }
@@ -804,6 +815,7 @@ th {
 }
 
 @media (max-width: 600px) {
+  .filter-box { grid-template-columns: 1fr; }
   .category-grid, .product-grid { grid-template-columns: 1fr; }
   .hero { padding: 2.5rem 0 3.5rem; }
   .hero h1 { font-size: clamp(2.7rem,10vw,3.8rem); }

@@ -43,7 +43,10 @@ MySQL inicializa `database/schema.sql` la primera vez que se crea el volumen. Lo
 4. Si tus credenciales difieren de las predeterminadas, define `DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASS` y `DB_NAME` en el entorno de Apache antes de iniciarlo.
 
 La aplicación verifica que la base de datos y la tabla `usuario` estén disponibles; no crea bases de datos ni importa el esquema automáticamente.
-Si MySQL no está disponible al intentar iniciar sesión, la aplicación informa ahora que no pudo conectarse con la base de datos en lugar de mostrar “Credenciales incorrectas”.
+Si MySQL no está disponible al intentar iniciar sesión, la aplicación informa que no pudo conectarse con la base de datos en lugar de mostrar “Credenciales inválidas”.
+
+Cuando el correo o la contraseña no coinciden, el mensaje mostrado es “Credenciales inválidas.”. La recuperación de contraseña no está disponible en esta versión y no se ofrece un enlace funcional para restablecerla.
+El catálogo incluye filtros por categoría, texto del servicio, precio mínimo y máximo por hora, calificación mínima y disponibilidad. Los filtros se reorganizan para pantallas pequeñas.
 
 Para una base ya existente, crea primero un respaldo y aplica las migraciones en orden: `database/migrations/20261113_add_data_quality_checks.sql` y luego `database/migrations/20261118_complete_requirement_gaps.sql`. La segunda agrega ciudades y dirección de atención, crea el registro de auditoría administrativa y normaliza las calificaciones: archiva los identificadores redundantes de esquemas antiguos en `calificacion_legacy_refs` antes de retirar esas columnas. Las migraciones no se ejecutan automáticamente. En una instalación nueva, `schema.sql` crea el esquema actualizado.
 
