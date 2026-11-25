@@ -24,6 +24,84 @@ SET @new_four_star_reviews = GREATEST(
   LEAST(@new_reviews, 72 - @existing_rating_sum - (3 * @new_reviews))
 );
 
+CREATE TEMPORARY TABLE service_copy (
+  n TINYINT UNSIGNED NOT NULL PRIMARY KEY,
+  category_id INT UNSIGNED NOT NULL,
+  title VARCHAR(150) NOT NULL,
+  description VARCHAR(255) NOT NULL
+) ENGINE=MEMORY;
+
+INSERT INTO service_copy (n, category_id, title, description)
+SELECT
+  n.n,
+  MOD(n.n - 1, 4) + 1,
+  CASE MOD(n.n - 1, 4)
+    WHEN 0 THEN CASE FLOOR((n.n - 1) / 4)
+      WHEN 0 THEN 'Reparación de fugas en baños'
+      WHEN 1 THEN 'Cambio de grifería de cocina'
+      WHEN 2 THEN 'Mantenimiento de tuberías'
+      WHEN 3 THEN 'Instalación de sanitarios'
+      WHEN 4 THEN 'Destape de desagües'
+      WHEN 5 THEN 'Revisión de presión de agua'
+      WHEN 6 THEN 'Reparación de duchas'
+      WHEN 7 THEN 'Instalación de lavaplatos'
+      WHEN 8 THEN 'Mantenimiento de tanques de agua'
+      WHEN 9 THEN 'Cambio de sifones'
+      WHEN 10 THEN 'Instalación de llaves de paso'
+      ELSE 'Revisión de calentadores de agua'
+    END
+    WHEN 1 THEN CASE FLOOR((n.n - 1) / 4)
+      WHEN 0 THEN 'Instalación de lámparas y luminarias'
+      WHEN 1 THEN 'Revisión de tomacorrientes'
+      WHEN 2 THEN 'Cambio de cableado residencial'
+      WHEN 3 THEN 'Instalación de ventiladores'
+      WHEN 4 THEN 'Mantenimiento de tableros eléctricos'
+      WHEN 5 THEN 'Reparación de fallas eléctricas'
+      WHEN 6 THEN 'Instalación de interruptores'
+      WHEN 7 THEN 'Revisión de puesta a tierra'
+      WHEN 8 THEN 'Instalación de puntos eléctricos'
+      WHEN 9 THEN 'Cambio de breakers'
+      WHEN 10 THEN 'Automatización de iluminación'
+      ELSE 'Diagnóstico de consumo eléctrico'
+    END
+    WHEN 2 THEN CASE FLOOR((n.n - 1) / 4)
+      WHEN 0 THEN 'Pintura interior de habitaciones'
+      WHEN 1 THEN 'Resane y pintura de paredes'
+      WHEN 2 THEN 'Pintura de techos'
+      WHEN 3 THEN 'Acabados para obra blanca'
+      WHEN 4 THEN 'Reparación de grietas'
+      WHEN 5 THEN 'Pintura de puertas y marcos'
+      WHEN 6 THEN 'Instalación de papel tapiz'
+      WHEN 7 THEN 'Estuco y acabado de muros'
+      WHEN 8 THEN 'Pintura de fachadas'
+      WHEN 9 THEN 'Mantenimiento de drywall'
+      WHEN 10 THEN 'Impermeabilización de paredes'
+      ELSE 'Pintura de sala y comedor'
+    END
+    ELSE CASE FLOOR((n.n - 1) / 4)
+      WHEN 0 THEN 'Limpieza profunda de apartamentos'
+      WHEN 1 THEN 'Aseo general de vivienda'
+      WHEN 2 THEN 'Limpieza de cocina y baños'
+      WHEN 3 THEN 'Limpieza para entrega de inmueble'
+      WHEN 4 THEN 'Limpieza de ventanas y balcones'
+      WHEN 5 THEN 'Desinfección de espacios'
+      WHEN 6 THEN 'Limpieza de muebles y tapicería'
+      WHEN 7 THEN 'Aseo antes y después de mudanza'
+      WHEN 8 THEN 'Limpieza de oficina'
+      WHEN 9 THEN 'Limpieza y mantenimiento de pisos'
+      WHEN 10 THEN 'Limpieza de nevera y horno'
+      ELSE 'Organización y aseo del hogar'
+    END
+  END,
+  CASE MOD(n.n - 1, 4)
+    WHEN 0 THEN 'Revisión y mantenimiento de instalaciones hidráulicas residenciales.'
+    WHEN 1 THEN 'Instalación y mantenimiento de redes eléctricas residenciales.'
+    WHEN 2 THEN 'Reparación y acabado de superficies para viviendas y locales.'
+    ELSE 'Limpieza detallada de espacios residenciales y comerciales.'
+  END
+FROM pilot_numbers n
+WHERE n.n <= @new_services;
+
 START TRANSACTION;
 
 INSERT IGNORE INTO usuario
@@ -95,7 +173,7 @@ SELECT
       ELSE 'Cárdenas'
     END
   ),
-  CONCAT('piloto.trabajador.', LPAD(n.n, 3, '0'), '@example.test'),
+  CONCAT('trabajador.', LPAD(n.n, 3, '0'), '@example.test'),
   CONCAT('300555', LPAD(n.n, 4, '0')),
   CONCAT('SIM-W-', LPAD(n.n, 4, '0')),
   CONCAT('Dirección de prueba ', LPAD(n.n, 3, '0')),
@@ -173,7 +251,7 @@ SELECT
       ELSE 'Martínez'
     END
   ),
-  CONCAT('piloto.cliente.', LPAD(n.n, 3, '0'), '@example.test'),
+  CONCAT('cliente.', LPAD(n.n, 3, '0'), '@example.test'),
   CONCAT('310555', LPAD(n.n, 4, '0')),
   CONCAT('SIM-C-', LPAD(n.n, 4, '0')),
   CONCAT('Dirección de prueba ', LPAD(n.n + 100, 3, '0')),
@@ -187,42 +265,24 @@ INSERT INTO servicio
 SELECT
   workers.id,
   categories.id,
-  CONCAT(
-    CASE MOD(n.n - 1, 4)
-      WHEN 0 THEN 'Reparación de fugas y grifería'
-      WHEN 1 THEN 'Instalaciones eléctricas residenciales'
-      WHEN 2 THEN 'Pintura y reparación de paredes'
-      ELSE 'Limpieza profunda del hogar'
-    END,
-    ' - Piloto ',
-    LPAD(n.n, 2, '0')
-  ),
-  'Oferta sintética generada para pruebas locales; no representa un proveedor real.',
-  12000 + n.n * 1250,
+  service_data.title,
+  service_data.description,
+  12000 + service_data.n * 1250,
   'activo',
   1
-FROM pilot_numbers n
+FROM service_copy service_data
 INNER JOIN (
   SELECT u.id, ROW_NUMBER() OVER (ORDER BY u.id) AS row_num
   FROM usuario u
   INNER JOIN rol r ON r.id = u.rol_id
   WHERE r.nombre = 'Trabajador'
-) workers ON workers.row_num = MOD(n.n - 1, (SELECT COUNT(*) FROM usuario u INNER JOIN rol r ON r.id = u.rol_id WHERE r.nombre = 'Trabajador')) + 1
-INNER JOIN categoria categories ON categories.id = MOD(n.n - 1, 4) + 1
-WHERE n.n <= @new_services
+) workers ON workers.row_num = MOD(service_data.n - 1, (SELECT COUNT(*) FROM usuario u INNER JOIN rol r ON r.id = u.rol_id WHERE r.nombre = 'Trabajador')) + 1
+INNER JOIN categoria categories ON categories.id = service_data.category_id
+WHERE service_data.n <= @new_services
   AND NOT EXISTS (
     SELECT 1
     FROM servicio existing
-    WHERE existing.titulo = CONCAT(
-      CASE MOD(n.n - 1, 4)
-        WHEN 0 THEN 'Reparación de fugas y grifería'
-        WHEN 1 THEN 'Instalaciones eléctricas residenciales'
-        WHEN 2 THEN 'Pintura y reparación de paredes'
-        ELSE 'Limpieza profunda del hogar'
-      END,
-      ' - Piloto ',
-      LPAD(n.n, 2, '0')
-    )
+    WHERE existing.titulo = service_data.title
   );
 
 INSERT INTO reserva
@@ -235,27 +295,20 @@ SELECT
     ELSE DATE_ADD(CURRENT_DATE, INTERVAL n.n - @new_reviews DAY)
   END,
   MAKETIME(8 + MOD(n.n - 1, 10), 0, 0),
-  CONCAT('Dirección ficticia de prueba piloto ', LPAD(n.n, 3, '0')),
+  CONCAT('Dirección de prueba ', LPAD(n.n, 3, '0')),
   CASE WHEN n.n <= @new_reviews THEN 'finalizada' ELSE 'pendiente' END
 FROM pilot_numbers n
 INNER JOIN usuario clients
-  ON clients.email = CONCAT('piloto.cliente.', LPAD(n.n, 3, '0'), '@example.test')
-INNER JOIN servicio services
-  ON services.titulo = CONCAT(
-    CASE MOD(n.n - 1, 4)
-      WHEN 0 THEN 'Reparación de fugas y grifería'
-      WHEN 1 THEN 'Instalaciones eléctricas residenciales'
-      WHEN 2 THEN 'Pintura y reparación de paredes'
-      ELSE 'Limpieza profunda del hogar'
-    END,
-    ' - Piloto ',
-    LPAD(n.n, 2, '0')
-  )
+  ON clients.email = CONCAT('cliente.', LPAD(n.n, 3, '0'), '@example.test')
+INNER JOIN (
+  SELECT s.id, ROW_NUMBER() OVER (ORDER BY s.id) AS row_num
+  FROM servicio s
+) services ON services.row_num = MOD(n.n - 1, 50) + 1
 WHERE n.n <= @new_reservations
   AND NOT EXISTS (
     SELECT 1
     FROM reserva existing
-    WHERE existing.direccion_atencion = CONCAT('Dirección ficticia de prueba piloto ', LPAD(n.n, 3, '0'))
+    WHERE existing.direccion_atencion = CONCAT('Dirección de prueba ', LPAD(n.n, 3, '0'))
   );
 
 INSERT INTO calificacion (reserva_id, estrellas, comentario)
@@ -265,7 +318,7 @@ SELECT
   'Calificación sintética generada para pruebas locales.'
 FROM pilot_numbers n
 INNER JOIN reserva r
-  ON r.direccion_atencion = CONCAT('Dirección ficticia de prueba piloto ', LPAD(n.n, 3, '0'))
+  ON r.direccion_atencion = CONCAT('Dirección de prueba ', LPAD(n.n, 3, '0'))
 WHERE n.n <= @new_reviews
   AND NOT EXISTS (
     SELECT 1
@@ -274,6 +327,7 @@ WHERE n.n <= @new_reviews
   );
 
 COMMIT;
+DROP TEMPORARY TABLE service_copy;
 DROP TEMPORARY TABLE pilot_numbers;
 
 SELECT

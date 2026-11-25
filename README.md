@@ -124,18 +124,19 @@ La plataforma conserva su arquitectura PHP/MySQL y sus flujos existentes, y ahor
 
 El registro conserva el inicio automático de sesión y requiere ciudad, según la decisión del equipo para esta versión. Los documentos fuente mantienen diferencias en esos dos puntos: RF-001 describe una redirección al login y no incluye ciudad entre sus entradas, mientras que el backlog/plan de pruebas y la implementación vigente difieren.
 
-Las cuentas de prueba con nombres normales siguen siendo datos sintéticos: sus correos usan `example.test`, sus documentos llevan el prefijo `SIM-` y las reseñas/direcciones están identificadas como datos de prueba. Los conteos de esos registros no acreditan un piloto con personas reales. Las metas de 50 usuarios concurrentes, 99% de disponibilidad durante 30 días y 80% de éxito de usabilidad requieren sus propias evidencias reales.
+Los perfiles y servicios de demostración usan nombres y descripciones naturales, sin etiquetas de “Piloto” en el catálogo. Siguen siendo datos sintéticos: los correos usan el dominio reservado `example.test`, los documentos el prefijo `SIM-` y las reseñas/direcciones conservan indicadores de prueba. Los conteos no acreditan usuarios ni un piloto con personas reales. Las metas de 50 usuarios concurrentes, 99% de disponibilidad durante 30 días y 80% de éxito de usabilidad requieren sus propias evidencias reales.
 
 La verificación local de regresión de requisitos se ejecuta con `docker compose exec -T web php tests/requirements_smoke.php`. También se revisan los archivos PHP con `php -l` y la configuración con `docker compose config --quiet`.
 
-Las verificaciones de seguridad sin dependencia de la base de datos se ejecutan con `docker compose exec -T web php tests/security_helpers_smoke.php`. Para ejecutar las verificaciones funcionales, debe estar disponible la base de datos del entorno de pruebas. `seed_pilot_100.sql` y los fixtures DATA-001/DATA-002 son para bases desechables: algunos vacían tablas o generan volúmenes grandes. `append_pilot_100.sql` es una excepción aditiva, creada para ampliar la base Docker local sin borrar filas existentes; úsala solo después de respaldar y verifica sus conteos/resultados. Ningún fixture constituye evidencia de UAT con participantes.
+Las verificaciones de seguridad sin dependencia de la base de datos se ejecutan con `docker compose exec -T web php tests/security_helpers_smoke.php`. Para ejecutar las verificaciones funcionales, debe estar disponible la base de datos del entorno de pruebas. `seed_pilot_100.sql` y los fixtures DATA-001/DATA-002 son para bases desechables: algunos vacían tablas o generan volúmenes grandes. `append_pilot_100.sql` es aditivo y no borra filas existentes; úsalo solo tras respaldar y revisar sus resultados. `normalize_pilot_display.sql` actualiza únicamente los datos demo antiguos que aún conservan marcadores visibles de piloto. Ningún fixture constituye evidencia de UAT con participantes.
 
 El puerto web publicado por Docker es `APP_PORT` (8080 por defecto); MySQL escucha en 3306 dentro de la red de Compose y no se publica al host. En XAMPP, Apache/MySQL usan los puertos definidos en esa instalación y el esquema debe importarse manualmente.
 
 ## QA piloto reproducible
 
 - El fixture ficticio completo está en `tests/fixtures/seed_pilot_100.sql`.
-- Después de respaldar y solo para la base local de demostración, `tests/fixtures/append_pilot_100.sql` amplía el conjunto sin eliminar registros; usa clientes distintos para las reservas nuevas y apunta a un promedio de 3.60.
+- Después de respaldar y solo para la base local de demostración, `tests/fixtures/append_pilot_100.sql` amplía el conjunto sin eliminar registros; usa nombres naturales, correos de prueba `.test`, servicios con títulos descriptivos, clientes distintos para las nuevas reservas y apunta a un promedio de 3.60.
+- Para actualizar una base local que ya tenga los datos demo anteriores, aplica `tests/fixtures/normalize_pilot_display.sql`; respalda primero y verifica los conteos.
 - La verificación se encuentra en `tests/fixtures/verify_pilot_100.sql`.
 - Las metas del conjunto sintético son 100 usuarios, 50 servicios, 30 reservas, 20 calificaciones y promedio 3.60. Etiquetarlas como sintéticas no las convierte en resultados de aceptación real.
 - `seed_pilot_100.sql` no debe cargarse en una base con datos existentes; úselo en una base desechable de QA. Para la demo local, `append_pilot_100.sql` agrega solo registros sintéticos faltantes.
