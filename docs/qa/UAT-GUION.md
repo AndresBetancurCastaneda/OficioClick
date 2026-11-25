@@ -1,22 +1,41 @@
-# Guion UAT – OficioClick
+# Guion UAT — OficioClick
 
 ## Propósito
 
-Validar con participantes controlados los flujos reales del MVP. Las cuentas ficticias pueden usarse para el ensayo; los resultados deben distinguir datos sintéticos de participantes reales.
+Validar los flujos del MVP en un ambiente aislado. Las cuentas que genera el fixture son sintéticas y no representan participantes ni resultados reales de aceptación.
 
-## Datos y ambiente
+## Preparación segura
 
-- Ambiente: AMB-UAT.
-- Datos: `tests/fixtures/seed_pilot_100.sql`.
-- Puerto Docker: `18081` o puerto configurado.
-- No usar datos personales reales.
+- Usa una instancia y una base exclusivas para UAT; no cargues el fixture en la base de desarrollo con información que quieras conservar.
+- En Docker, copia `.env.example` a `.env.uat`, configura `APP_PORT=18081` y contraseñas locales, y levanta un proyecto Compose separado:
 
-## Participantes
+  ```powershell
+  docker compose --env-file .env.uat -p oficioclick-uat up --build -d
+  ```
 
-- 30 clientes ficticios para reserva.
-- 20 trabajadores ficticios para publicación y gestión.
-- 1 administrador ficticio.
-- Participantes reales opcionales de usabilidad.
+- El fixture `tests/fixtures/seed_pilot_100.sql` elimina los registros de usuario, servicio, reserva, calificación y auditoría de la base seleccionada antes de generarlos. Impórtalo solo en la base desechable del proyecto UAT:
+
+  ```powershell
+  docker compose --env-file .env.uat -p oficioclick-uat cp tests\fixtures\seed_pilot_100.sql db:/tmp/seed_pilot_100.sql
+  docker compose --env-file .env.uat -p oficioclick-uat exec -T db sh -lc 'mysql -uroot -p"$MYSQL_ROOT_PASSWORD" "$MYSQL_DATABASE" < /tmp/seed_pilot_100.sql'
+  ```
+
+- Abre `http://localhost:18081`. Al finalizar, `docker compose --env-file .env.uat -p oficioclick-uat down` detiene los servicios y conserva los datos; `down -v` elimina el volumen UAT y sus datos.
+- No uses información personal real en capturas, comentarios, cuentas ni reportes.
+
+## Cuentas y datos de ensayo
+
+La contraseña de desarrollo de las cuentas del fixture es `12345678a`.
+
+| Rol | Cuenta de ejemplo |
+|---|---|
+| Administrador | `admin@example.test` |
+| Trabajador | `trabajador.001@example.test` |
+| Cliente | `cliente.001@example.test` |
+
+El conjunto contiene 100 cuentas (1 administrador, 20 trabajadores y 79 clientes), 50 servicios, 30 reservas asociadas a 30 clientes y 30 servicios distintos, y 20 calificaciones con promedio 3,60. Los correos `.test` y documentos `SIM-` identifican datos sintéticos.
+
+Para una sesión con participantes reales, crea cuentas temporales por separado, informa el propósito de la prueba y registra la evidencia sin datos personales. No presentes los conteos del fixture como resultados de UAT.
 
 ## Casos
 
@@ -27,7 +46,7 @@ Validar con participantes controlados los flujos reales del MVP. Las cuentas fic
 5. Solicitud de reserva.
 6. Confirmación de reserva por trabajador.
 7. Finalización de reserva.
-8. Calificación 1–5.
+8. Calificación de 1 a 5 estrellas.
 9. Actualización del perfil propio por Cliente y Trabajador; comprobar correo y documento duplicados.
 10. Creación administrativa de una cuenta Cliente/Trabajador y verificación de la entrada de auditoría.
 11. Gestión administrativa de rol/estado, filtros de reservas y exportación de reporte CSV.
@@ -35,15 +54,15 @@ Validar con participantes controlados los flujos reales del MVP. Las cuentas fic
 
 ## Evidencia mínima
 
+- Fecha, versión y commit evaluados.
+- Tarea y tiempo empleado.
+- Resultado: éxito o falla.
+- Observación anonimizada y defectos registrados por ID.
 - Capturas sin datos personales.
-- Fecha, versión y commit.
-- Tiempo de cada tarea.
-- Éxito o falla.
-- Observación del participante.
-- Defectos registrados por ID.
 
-## Criterio
+## Criterios de aceptación
 
-- 80% o más completa la reserva en menos de 3 minutos.
-- Ningún defecto Bloqueante o Crítico abierto.
-- Las acciones por rol coinciden con el servidor.
+- Al menos 80% de participantes completa una reserva en menos de 3 minutos.
+- No quedan defectos Bloqueantes o Críticos abiertos.
+- Las acciones permitidas por rol se validan también en el servidor.
+- La disponibilidad durante 30 días y la compatibilidad entre navegadores requieren mediciones y evidencias propias; este guion no las sustituye.

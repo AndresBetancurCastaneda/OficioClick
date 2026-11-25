@@ -1,3 +1,4 @@
+-- DESTRUCTIVE: use only in a disposable database; replaces user, service, reservation, review, and audit data.
 SET NAMES utf8mb4;
 
 DELETE FROM calificacion;
@@ -23,15 +24,15 @@ INSERT INTO usuario
 SELECT
   (SELECT id FROM rol WHERE nombre = 'Administrador'),
   (SELECT id FROM ciudad WHERE nombre = 'Medellín'),
-  'Admin', 'Piloto',
-  'admin.piloto@example.test',
+  'Admin', 'OficioClick',
+  'admin@example.test',
   '3000000000',
-  'PILOT-ADMIN-001',
+  'SIM-ADMIN-001',
   'Medellín',
   '$2y$10$.NbKWZsEOhGUMgrtq6HYCuH2OcSmTelpKdxrjp9EpHfeT1.M3f4pS',
   'activo'
 WHERE NOT EXISTS (
-  SELECT 1 FROM usuario WHERE email = 'admin.piloto@example.test'
+  SELECT 1 FROM usuario WHERE email = 'admin@example.test'
 );
 
 INSERT INTO usuario
@@ -95,10 +96,10 @@ SELECT
     WHEN 18 THEN 'López'
     ELSE 'Mendoza'
   END,
-  CONCAT('trabajador.piloto.', LPAD(n.n, 2, '0'), '@example.test'),
+  CONCAT('trabajador.', LPAD(n.n, 3, '0'), '@example.test'),
   CONCAT('300', LPAD(n.n, 7, '0')),
-  CONCAT('TR-', LPAD(n.n, 4, '0')),
-  CONCAT('Calle ficticia ', n.n),
+  CONCAT('SIM-W-', LPAD(n.n, 4, '0')),
+  CONCAT('Dirección de prueba ', LPAD(n.n, 3, '0')),
   '$2y$10$.NbKWZsEOhGUMgrtq6HYCuH2OcSmTelpKdxrjp9EpHfeT1.M3f4pS',
   'activo'
 FROM pilot_numbers n
@@ -165,10 +166,10 @@ SELECT
     WHEN 18 THEN 'Silva'
     ELSE 'Ortiz'
   END,
-  CONCAT('cliente.piloto.', LPAD(n.n - 20, 2, '0'), '@example.test'),
+  CONCAT('cliente.', LPAD(n.n - 20, 3, '0'), '@example.test'),
   CONCAT('310', LPAD(n.n - 20, 7, '0')),
-  CONCAT('CL-', LPAD(n.n - 20, 4, '0')),
-  CONCAT('Dirección ficticia ', n.n - 20),
+  CONCAT('SIM-C-', LPAD(n.n - 20, 4, '0')),
+  CONCAT('Dirección de prueba ', LPAD(n.n - 20, 3, '0')),
   '$2y$10$.NbKWZsEOhGUMgrtq6HYCuH2OcSmTelpKdxrjp9EpHfeT1.M3f4pS',
   'activo'
 FROM pilot_numbers n
@@ -179,17 +180,74 @@ INSERT INTO servicio
 SELECT
   w.id,
   c.id,
-  CONCAT(
-    CASE MOD(n.n - 1, 4)
-      WHEN 0 THEN 'Reparación de fugas'
-      WHEN 1 THEN 'Instalación eléctrica residencial'
-      WHEN 2 THEN 'Pintura y reparación de paredes'
-      ELSE 'Limpieza profunda del hogar'
-    END,
-    ' - Piloto ',
-    LPAD(n.n, 2, '0')
-  ),
-  'Servicio ficticio creado exclusivamente para pruebas controladas.',
+  CASE MOD(n.n - 1, 4)
+    WHEN 0 THEN CASE FLOOR((n.n - 1) / 4)
+      WHEN 0 THEN 'Reparación de fugas en baños'
+      WHEN 1 THEN 'Cambio de grifería de cocina'
+      WHEN 2 THEN 'Mantenimiento de tuberías'
+      WHEN 3 THEN 'Instalación de sanitarios'
+      WHEN 4 THEN 'Destape de desagües'
+      WHEN 5 THEN 'Revisión de presión de agua'
+      WHEN 6 THEN 'Reparación de duchas'
+      WHEN 7 THEN 'Instalación de lavaplatos'
+      WHEN 8 THEN 'Mantenimiento de tanques de agua'
+      WHEN 9 THEN 'Cambio de sifones'
+      WHEN 10 THEN 'Instalación de llaves de paso'
+      WHEN 11 THEN 'Mantenimiento de bombas de agua'
+      ELSE 'Inspección de redes de desagüe'
+    END
+    WHEN 1 THEN CASE FLOOR((n.n - 1) / 4)
+      WHEN 0 THEN 'Instalación de lámparas y luminarias'
+      WHEN 1 THEN 'Revisión de tomacorrientes'
+      WHEN 2 THEN 'Cambio de cableado residencial'
+      WHEN 3 THEN 'Instalación de ventiladores'
+      WHEN 4 THEN 'Mantenimiento de tableros eléctricos'
+      WHEN 5 THEN 'Reparación de fallas eléctricas'
+      WHEN 6 THEN 'Instalación de interruptores'
+      WHEN 7 THEN 'Revisión de puesta a tierra'
+      WHEN 8 THEN 'Instalación de puntos eléctricos'
+      WHEN 9 THEN 'Cambio de breakers'
+      WHEN 10 THEN 'Automatización de iluminación'
+      WHEN 11 THEN 'Instalación de sensores de movimiento'
+      ELSE 'Mantenimiento de sistemas de respaldo eléctrico'
+    END
+    WHEN 2 THEN CASE FLOOR((n.n - 1) / 4)
+      WHEN 0 THEN 'Pintura interior de habitaciones'
+      WHEN 1 THEN 'Resane y pintura de paredes'
+      WHEN 2 THEN 'Pintura de techos'
+      WHEN 3 THEN 'Acabados para obra blanca'
+      WHEN 4 THEN 'Reparación de grietas'
+      WHEN 5 THEN 'Pintura de puertas y marcos'
+      WHEN 6 THEN 'Instalación de papel tapiz'
+      WHEN 7 THEN 'Estuco y acabado de muros'
+      WHEN 8 THEN 'Pintura de fachadas'
+      WHEN 9 THEN 'Mantenimiento de drywall'
+      WHEN 10 THEN 'Impermeabilización de paredes'
+      WHEN 11 THEN 'Mantenimiento de enchapes y pisos'
+      ELSE 'Restauración de acabados decorativos'
+    END
+    ELSE CASE FLOOR((n.n - 1) / 4)
+      WHEN 0 THEN 'Limpieza profunda de apartamentos'
+      WHEN 1 THEN 'Aseo general de vivienda'
+      WHEN 2 THEN 'Limpieza de cocina y baños'
+      WHEN 3 THEN 'Limpieza para entrega de inmueble'
+      WHEN 4 THEN 'Limpieza de ventanas y balcones'
+      WHEN 5 THEN 'Desinfección de espacios'
+      WHEN 6 THEN 'Limpieza de muebles y tapicería'
+      WHEN 7 THEN 'Aseo antes y después de mudanza'
+      WHEN 8 THEN 'Limpieza de oficina'
+      WHEN 9 THEN 'Limpieza y mantenimiento de pisos'
+      WHEN 10 THEN 'Limpieza de nevera y horno'
+      WHEN 11 THEN 'Limpieza de patios y terrazas'
+      ELSE 'Organización y aseo del hogar'
+    END
+  END,
+  CASE MOD(n.n - 1, 4)
+    WHEN 0 THEN 'Revisión y mantenimiento de instalaciones hidráulicas residenciales.'
+    WHEN 1 THEN 'Instalación y mantenimiento de redes eléctricas residenciales.'
+    WHEN 2 THEN 'Reparación y acabado de superficies para viviendas y locales.'
+    ELSE 'Limpieza detallada de espacios residenciales y comerciales.'
+  END,
   9000 + n.n * 137,
   'activo',
   1
@@ -214,7 +272,7 @@ SELECT
     ELSE DATE_ADD(CURRENT_DATE, INTERVAL n.n - 19 DAY)
   END,
   MAKETIME(8 + MOD(n.n - 1, 10), 0, 0),
-  CONCAT('Dirección ficticia ', n.n),
+  CONCAT('Dirección de prueba ', LPAD(n.n, 3, '0')),
   CASE
     WHEN n.n <= 20 THEN 'finalizada'
     WHEN n.n <= 25 THEN 'pendiente'
@@ -222,7 +280,7 @@ SELECT
   END
 FROM pilot_numbers n
 INNER JOIN usuario client
-  ON client.email = CONCAT('cliente.piloto.', LPAD(n.n, 2, '0'), '@example.test')
+  ON client.email = CONCAT('cliente.', LPAD(n.n, 3, '0'), '@example.test')
 INNER JOIN (
   SELECT ROW_NUMBER() OVER (ORDER BY id) rn, id
   FROM servicio
@@ -236,7 +294,7 @@ SELECT r.id,
          WHEN rn <= 18 THEN 3
          ELSE 2
        END,
-       'Calificación ficticia creada para el piloto académico.'
+       'El servicio fue puntual y el trabajo quedó bien realizado.'
 FROM (
   SELECT ROW_NUMBER() OVER (ORDER BY r.id) rn, r.id
   FROM reserva r

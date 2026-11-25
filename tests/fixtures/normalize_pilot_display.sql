@@ -27,7 +27,8 @@ SELECT
       WHEN 8 THEN 'Mantenimiento de tanques de agua'
       WHEN 9 THEN 'Cambio de sifones'
       WHEN 10 THEN 'Instalación de llaves de paso'
-      ELSE 'Revisión de calentadores de agua'
+      WHEN 11 THEN 'Mantenimiento de bombas de agua'
+      ELSE 'Inspección de redes de desagüe'
     END
     WHEN 1 THEN CASE FLOOR((n.n - 1) / 4)
       WHEN 0 THEN 'Instalación de lámparas y luminarias'
@@ -41,7 +42,8 @@ SELECT
       WHEN 8 THEN 'Instalación de puntos eléctricos'
       WHEN 9 THEN 'Cambio de breakers'
       WHEN 10 THEN 'Automatización de iluminación'
-      ELSE 'Diagnóstico de consumo eléctrico'
+      WHEN 11 THEN 'Instalación de sensores de movimiento'
+      ELSE 'Mantenimiento de sistemas de respaldo eléctrico'
     END
     WHEN 2 THEN CASE FLOOR((n.n - 1) / 4)
       WHEN 0 THEN 'Pintura interior de habitaciones'
@@ -55,7 +57,8 @@ SELECT
       WHEN 8 THEN 'Pintura de fachadas'
       WHEN 9 THEN 'Mantenimiento de drywall'
       WHEN 10 THEN 'Impermeabilización de paredes'
-      ELSE 'Pintura de sala y comedor'
+      WHEN 11 THEN 'Mantenimiento de enchapes y pisos'
+      ELSE 'Restauración de acabados decorativos'
     END
     ELSE CASE FLOOR((n.n - 1) / 4)
       WHEN 0 THEN 'Limpieza profunda de apartamentos'
@@ -69,6 +72,7 @@ SELECT
       WHEN 8 THEN 'Limpieza de oficina'
       WHEN 9 THEN 'Limpieza y mantenimiento de pisos'
       WHEN 10 THEN 'Limpieza de nevera y horno'
+      WHEN 11 THEN 'Limpieza de patios y terrazas'
       ELSE 'Organización y aseo del hogar'
     END
   END,
@@ -90,6 +94,23 @@ SET s.titulo = copy_data.title,
 WHERE s.titulo LIKE '% - Piloto %';
 
 UPDATE usuario
+SET apellido = 'OficioClick'
+WHERE apellido = 'Piloto'
+  AND email LIKE '%@example.test';
+
+UPDATE usuario
+SET documento_identidad = CASE
+  WHEN documento_identidad LIKE 'PILOT-ADMIN-%'
+    THEN CONCAT('SIM-ADMIN-', RIGHT(documento_identidad, 3))
+  WHEN documento_identidad LIKE 'TR-%'
+    THEN CONCAT('SIM-W-', SUBSTRING(documento_identidad, 4))
+  ELSE CONCAT('SIM-C-', SUBSTRING(documento_identidad, 4))
+END
+WHERE documento_identidad LIKE 'PILOT-ADMIN-%'
+   OR documento_identidad LIKE 'TR-%'
+   OR documento_identidad LIKE 'CL-%';
+
+UPDATE usuario
 SET email = CONCAT(
   REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(LOWER(nombre), 'á', 'a'), 'é', 'e'), 'í', 'i'), 'ó', 'o'), 'ú', 'u'), 'ñ', 'n'), ' ', '.'),
   '.',
@@ -98,15 +119,22 @@ SET email = CONCAT(
   LPAD(id, 4, '0'),
   '@example.test'
 )
-WHERE email LIKE 'piloto.%@example.test'
+WHERE email LIKE '%piloto.%@example.test'
    OR (email LIKE '% %' AND email LIKE '%@example.test');
+
+UPDATE usuario
+SET direccion = CONCAT(
+  'Dirección de prueba ',
+  LPAD(CAST(SUBSTRING_INDEX(direccion, ' ', -1) AS UNSIGNED), 3, '0')
+)
+WHERE direccion LIKE '%fictic%';
 
 UPDATE reserva
 SET direccion_atencion = CONCAT(
   'Dirección de prueba ',
   LPAD(CAST(SUBSTRING_INDEX(direccion_atencion, ' ', -1) AS UNSIGNED), 3, '0')
 )
-WHERE direccion_atencion LIKE 'Dirección ficticia de prueba piloto %';
+WHERE direccion_atencion LIKE '%fictic%';
 
 COMMIT;
 DROP TEMPORARY TABLE service_copy;
@@ -116,5 +144,7 @@ SELECT
   (SELECT COUNT(*) FROM servicio) AS servicios,
   (SELECT COUNT(*) FROM reserva) AS reservas,
   (SELECT COUNT(*) FROM calificacion) AS calificaciones,
-  (SELECT COUNT(*) FROM usuario WHERE email LIKE 'piloto.%@example.test') AS usuarios_pendientes_de_normalizar,
-  (SELECT COUNT(*) FROM servicio WHERE titulo LIKE '% - Piloto %') AS servicios_pendientes_de_normalizar;
+  (SELECT COUNT(*) FROM usuario WHERE email LIKE '%piloto.%@example.test' OR nombre LIKE '%piloto%' OR apellido LIKE '%piloto%') AS usuarios_pendientes_de_normalizar,
+  (SELECT COUNT(*) FROM servicio WHERE titulo LIKE '%piloto%' OR descripcion LIKE '%fictic%' OR descripcion LIKE '%sintétic%') AS servicios_pendientes_de_normalizar,
+  (SELECT COUNT(*) FROM usuario WHERE direccion LIKE '%fictic%') AS direcciones_usuario_pendientes,
+  (SELECT COUNT(*) FROM reserva WHERE direccion_atencion LIKE '%fictic%') AS direcciones_reserva_pendientes;
