@@ -29,8 +29,10 @@
                 <?php if (isLoggedIn()): ?>
                     <?php if ($_SESSION['user']['role'] === 'Cliente'): ?>
                         <a href="index.php?page=client-dashboard">Mi panel</a>
+                        <a href="index.php?page=profile">Mi perfil</a>
                     <?php elseif ($_SESSION['user']['role'] === 'Trabajador'): ?>
                         <a href="index.php?page=worker-dashboard">Mi panel</a>
+                        <a href="index.php?page=profile">Mi perfil</a>
                     <?php elseif ($_SESSION['user']['role'] === 'Administrador'): ?>
                         <a href="index.php?page=admin-dashboard">Administración</a>
                     <?php endif; ?>

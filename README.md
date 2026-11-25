@@ -43,7 +43,10 @@ MySQL inicializa `database/schema.sql` la primera vez que se crea el volumen. Lo
 4. Si tus credenciales difieren de las predeterminadas, define `DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASS` y `DB_NAME` en el entorno de Apache antes de iniciarlo.
 
 La aplicación verifica que la base de datos y la tabla `usuario` estén disponibles; no crea bases de datos ni importa el esquema automáticamente.
-Si MySQL no está disponible al intentar iniciar sesión, la aplicación informa ahora que no pudo conectarse con la base de datos en lugar de mostrar “Credenciales incorrectas”.
+Si MySQL no está disponible al intentar iniciar sesión, la aplicación informa que no pudo conectarse con la base de datos en lugar de mostrar “Credenciales inválidas”.
+
+Cuando el correo o la contraseña no coinciden, el mensaje mostrado es “Credenciales inválidas.”. La recuperación de contraseña no está disponible en esta versión y no se ofrece un enlace funcional para restablecerla.
+El catálogo incluye filtros por categoría, texto del servicio, precio mínimo y máximo por hora, calificación mínima y disponibilidad. Los filtros se reorganizan para pantallas pequeñas.
 
 Para una base ya existente, crea primero un respaldo y aplica las migraciones en orden: `database/migrations/20261113_add_data_quality_checks.sql` y luego `database/migrations/20261118_complete_requirement_gaps.sql`. La segunda agrega ciudades y dirección de atención, crea el registro de auditoría administrativa y normaliza las calificaciones: archiva los identificadores redundantes de esquemas antiguos en `calificacion_legacy_refs` antes de retirar esas columnas. Las migraciones no se ejecutan automáticamente. En una instalación nueva, `schema.sql` crea el esquema actualizado.
 
@@ -114,16 +117,33 @@ La plataforma conserva su arquitectura PHP/MySQL y sus flujos existentes, y ahor
 - Búsqueda por categoría, texto, disponibilidad, rango de precios y calificación mínima, con paginación.
 - Reserva por fecha, hora y dirección de atención; las reservas anteriores conservan la dirección como nula.
 - Edición y activación/desactivación de servicios por el trabajador.
-- Métricas administrativas de usuarios, servicios activos y reservas; filtros de reservas, gestión de servicios, moderación de reseñas y auditoría.
+- Edición del perfil propio para clientes y trabajadores, con validación de correo y documento únicos.
+- Gestión administrativa de usuarios: creación de cuentas de Cliente/Trabajador, cambio de rol/estado, auditoría, filtros y reportes.
+- Métricas administrativas de usuarios, servicios activos y reservas; filtros de reservas, gestión de servicios y moderación de reseñas.
 - Exportaciones CSV de solo lectura y sin contraseñas, documentos de identidad ni direcciones.
 
-Las comprobaciones de aceptación que requieren un piloto real no se consideran aprobadas por ejecutar pruebas locales. Las metas de 100 usuarios, 50 servicios, 30 reservas, 20 calificaciones, 50 usuarios concurrentes, 99% de disponibilidad durante 30 días y 80% de éxito de usabilidad necesitan evidencias reales de prueba, seguimiento o validación con usuarios.
+El registro conserva el inicio automático de sesión y requiere ciudad, según la decisión del equipo para esta versión. Los documentos fuente mantienen diferencias en esos dos puntos: RF-001 describe una redirección al login y no incluye ciudad entre sus entradas, mientras que el backlog/plan de pruebas y la implementación vigente difieren.
+
+Los perfiles y servicios de demostración usan nombres y descripciones naturales, sin etiquetas de “Piloto” en el catálogo. Siguen siendo datos sintéticos: los correos usan el dominio reservado `example.test`, los documentos el prefijo `SIM-` y las reseñas/direcciones conservan indicadores de prueba. Los conteos no acreditan usuarios ni un piloto con personas reales. Las metas de 50 usuarios concurrentes, 99% de disponibilidad durante 30 días y 80% de éxito de usabilidad requieren sus propias evidencias reales.
 
 La verificación local de regresión de requisitos se ejecuta con `docker compose exec -T web php tests/requirements_smoke.php`. También se revisan los archivos PHP con `php -l` y la configuración con `docker compose config --quiet`.
 
-Las verificaciones de seguridad sin dependencia de la base de datos se ejecutan con `docker compose exec -T web php tests/security_helpers_smoke.php`. Para ejecutar las verificaciones funcionales, debe estar disponible la base de datos del entorno de pruebas. Los fixtures de `tests/fixtures/` se cargan únicamente en una base desechable de QA; DATA-001 presupone el esquema y los datos base de `database/schema.sql`, y DATA-002 se carga después de DATA-001. No cargues estos fixtures en una instalación con datos de usuarios.
+Las verificaciones de seguridad sin dependencia de la base de datos se ejecutan con `docker compose exec -T web php tests/security_helpers_smoke.php`. Para ejecutar las verificaciones funcionales, debe estar disponible la base de datos del entorno de pruebas. `seed_pilot_100.sql` y los fixtures DATA-001/DATA-002 son para bases desechables: algunos vacían tablas o generan volúmenes grandes. `append_pilot_100.sql` es aditivo y no borra filas existentes; úsalo solo tras respaldar y revisar sus resultados. `normalize_pilot_display.sql` actualiza únicamente los datos demo antiguos que aún conservan marcadores visibles de piloto. Ningún fixture constituye evidencia de UAT con participantes.
 
 El puerto web publicado por Docker es `APP_PORT` (8080 por defecto); MySQL escucha en 3306 dentro de la red de Compose y no se publica al host. En XAMPP, Apache/MySQL usan los puertos definidos en esa instalación y el esquema debe importarse manualmente.
+
+## QA piloto reproducible
+
+- El fixture ficticio completo está en `tests/fixtures/seed_pilot_100.sql`.
+- Después de respaldar y solo para la base local de demostración, `tests/fixtures/append_pilot_100.sql` amplía el conjunto sin eliminar registros; usa nombres naturales, correos de prueba `.test`, servicios con títulos descriptivos, clientes distintos para las nuevas reservas y apunta a un promedio de 3.60.
+- Para actualizar una base local que ya tenga los datos demo anteriores, aplica `tests/fixtures/normalize_pilot_display.sql`; respalda primero y verifica los conteos.
+- La verificación se encuentra en `tests/fixtures/verify_pilot_100.sql`.
+- Las metas del conjunto sintético son 100 usuarios, 50 servicios, 30 reservas, 20 calificaciones y promedio 3.60. Etiquetarlas como sintéticas no las convierte en resultados de aceptación real.
+- `seed_pilot_100.sql` no debe cargarse en una base con datos existentes; úselo en una base desechable de QA. Para la demo local, `append_pilot_100.sql` agrega solo registros sintéticos faltantes.
+- Las pruebas P0/P1 se ejecutan con `docker compose exec -T web php /var/www/html/tests/p0_p1_smoke.php`.
+- La carga sintética se ejecuta con `python scripts/load_check.py http://localhost:8080`.
+- La restauración desechable se ejecuta con `scripts/qa_backup_restore.ps1`.
+- El guion UAT se encuentra en `docs/qa/UAT-GUION.md`.
 
 ### Observaciones de alineación con los documentos fuente
 
@@ -131,10 +151,10 @@ Los documentos académicos se auditaron sin modificarlos. Antes de declarar la t
 
 - El documento de requisitos usa `RF-001` a `RF-008` y define `RNF-001` a `RNF-007`; el backlog alterna códigos sin ceros (`RF-01`) y afirma que existen ocho RNF.
 - El backlog vincula la búsqueda de menos de 3 segundos con `RNF-05`, aunque el documento de requisitos asigna rendimiento a `RNF-001` y compatibilidad entre navegadores a `RNF-005`.
-- La ciudad aparece como dato requerido en el backlog, pero no en las entradas de registro de la especificación detallada `RF-001`.
-- La salida de registro en `RF-001` dice redirigir al inicio de sesión; el backlog y la aplicación describen una sesión iniciada y redirección al panel según el rol.
-- La matriz de permisos menciona creación de usuarios por Administración y actualización del perfil propio para Cliente/Trabajador; esos flujos no están descritos en los requisitos funcionales detallados ni implementados como pantallas.
-- La formulación registra metas piloto de 100 usuarios, 50 servicios, 30 reservas y 20 calificaciones. El estado actual de la base Docker es menor y no acredita resultados piloto; los objetivos de carga, disponibilidad, usabilidad y compatibilidad también requieren sus evidencias externas.
+- La ciudad aparece como dato requerido en el backlog y en el plan de pruebas, pero no en las entradas de registro de la especificación detallada `RF-001`; para esta versión el equipo decidió mantenerla obligatoria.
+- La salida de registro en `RF-001` dice redirigir al inicio de sesión; para esta versión el equipo decidió conservar el inicio automático ya implementado.
+- La matriz de permisos menciona creación de usuarios por Administración y actualización del perfil propio para Cliente/Trabajador. Ambos flujos ya están implementados; la edición del perfil propio aún requiere trazabilidad explícita en un requisito funcional detallado.
+- La formulación registra metas piloto de 100 usuarios, 50 servicios, 30 reservas y 20 calificaciones. La base local puede contener datos sintéticos con esos conteos, pero no acredita un piloto real; los objetivos de carga, disponibilidad, usabilidad y compatibilidad también requieren sus evidencias externas.
 - La formulación marca pendientes las fechas de hitos y el representante funcional, y señala una diferencia entre un cronograma de 29 semanas y actividades documentadas en un periodo aproximado de 10 semanas. El plan de gestión conserva una lista de verificación con criterios pendientes de revisión.
 - El esquema actual incluye ocho tablas (`rol`, `ciudad`, `categoria`, `usuario`, `admin_action`, `servicio`, `reserva` y `calificacion`): seis entidades funcionales originales y dos de soporte. El diagrama DIA-006 refleja el esquema real; no se eliminaron `ciudad` ni `admin_action` para forzar el conteo de seis.
 - El plan define 26 casos de prueba, pero las pruebas de carga, disponibilidad durante 30 días, aceptación con usuarios, compatibilidad multi-navegador y recuperación requieren ambientes y evidencias que no se sustituyen con una revisión del código ni con pruebas locales.

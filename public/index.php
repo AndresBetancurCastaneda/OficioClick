@@ -53,7 +53,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             redirect('register');
         }
 
-        if (strlen($password) < 8 || !preg_match('/[A-Za-z]/', $password) || !preg_match('/\d/', $password)) {
+        if (!isValidAccountPassword($password)) {
             flash('error', 'La contraseña debe tener al menos 8 caracteres, una letra y un número.');
             redirect('register');
         }
@@ -75,11 +75,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
         }
 
         $documentQuery = mysqli_prepare($db, 'SELECT id FROM usuario WHERE documento_identidad = ? LIMIT 1');
+        if ($documentQuery === false) {
+            error_log('OficioClick registration document query preparation failed: ' . mysqli_error($db));
+            flash('error', 'No se pudo validar el documento. Inténtalo nuevamente.');
+            redirect('register');
+        }
         mysqli_stmt_bind_param($documentQuery, 's', $documento);
-        mysqli_stmt_execute($documentQuery);
+        if (!mysqli_stmt_execute($documentQuery)) {
+            error_log('OficioClick registration document query failed: ' . mysqli_stmt_error($documentQuery));
+            mysqli_stmt_close($documentQuery);
+            flash('error', 'No se pudo validar el documento. Inténtalo nuevamente.');
+            redirect('register');
+        }
         $documentResult = mysqli_stmt_get_result($documentQuery);
-        $documentExists = mysqli_fetch_assoc($documentResult);
+        $documentExists = $documentResult === false ? null : mysqli_fetch_assoc($documentResult);
         mysqli_stmt_close($documentQuery);
+        if ($documentResult === false) {
+            error_log('OficioClick registration document result failed: ' . mysqli_error($db));
+            flash('error', 'No se pudo validar el documento. Inténtalo nuevamente.');
+            redirect('register');
+        }
 
         if ($documentExists) {
             flash('error', 'El documento de identidad ya se encuentra registrado.');
@@ -87,27 +102,47 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
         }
 
         $roleQuery = mysqli_prepare($db, 'SELECT id FROM rol WHERE nombre = ? LIMIT 1');
+        if ($roleQuery === false) {
+            error_log('OficioClick registration role query preparation failed: ' . mysqli_error($db));
+            flash('error', 'No se pudo validar el rol. Inténtalo nuevamente.');
+            redirect('register');
+        }
         mysqli_stmt_bind_param($roleQuery, 's', $role);
-        mysqli_stmt_execute($roleQuery);
+        if (!mysqli_stmt_execute($roleQuery)) {
+            error_log('OficioClick registration role query failed: ' . mysqli_stmt_error($roleQuery));
+            mysqli_stmt_close($roleQuery);
+            flash('error', 'No se pudo validar el rol. Inténtalo nuevamente.');
+            redirect('register');
+        }
         $roleResult = mysqli_stmt_get_result($roleQuery);
-        $roleRow = mysqli_fetch_assoc($roleResult);
+        $roleRow = $roleResult === false ? null : mysqli_fetch_assoc($roleResult);
         mysqli_stmt_close($roleQuery);
+        if ($roleResult === false) {
+            error_log('OficioClick registration role result failed: ' . mysqli_error($db));
+            flash('error', 'No se pudo validar el rol. Inténtalo nuevamente.');
+            redirect('register');
+        }
         if (!$roleRow) {
             flash('error', 'No se encontró el rol solicitado. Contacta al administrador.');
             redirect('register');
         }
 
-        $roleId = (int) $roleRow['id'];
-        $passwordHash = password_hash($password, PASSWORD_DEFAULT);
-
-        $stmt = mysqli_prepare($db, 'INSERT INTO usuario (rol_id, ciudad_id, nombre, apellido, email, telefono, documento_identidad, direccion, password_hash, estado) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, "activo")');
-        mysqli_stmt_bind_param($stmt, 'iisssssss', $roleId, $cityId, $nombre, $apellido, $email, $telefono, $documento, $direccion, $passwordHash);
-        if (!mysqli_stmt_execute($stmt)) {
+        $userId = insertUserAccount(
+            $db,
+            (int) $roleRow['id'],
+            $cityId,
+            $nombre,
+            $apellido,
+            $email,
+            $telefono,
+            $documento,
+            $direccion,
+            $password
+        );
+        if ($userId === false) {
             flash('error', 'No se pudo registrar el usuario.');
             redirect('register');
         }
-        $userId = mysqli_insert_id($db);
-        mysqli_stmt_close($stmt);
 
         session_regenerate_id(true);
         rotateCsrfToken();
@@ -118,6 +153,269 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             redirect('worker-dashboard');
         }
         redirect('client-dashboard');
+    }
+
+    if ($action === 'create-user') {
+        requireRole(['Administrador']);
+        $nombre = trim((string) ($_POST['nombre'] ?? ''));
+        $apellido = trim((string) ($_POST['apellido'] ?? ''));
+        $email = strtolower(trim((string) ($_POST['email'] ?? '')));
+        $telefono = trim((string) ($_POST['telefono'] ?? ''));
+        $documento = trim((string) ($_POST['documento_identidad'] ?? ''));
+        $direccion = trim((string) ($_POST['direccion'] ?? ''));
+        $cityId = (int) ($_POST['ciudad_id'] ?? 0);
+        $password = (string) ($_POST['password'] ?? '');
+        $role = (string) ($_POST['rol'] ?? '');
+
+        if (
+            $nombre === ''
+            || $apellido === ''
+            || !filter_var($email, FILTER_VALIDATE_EMAIL)
+            || $telefono === ''
+            || $documento === ''
+            || $direccion === ''
+            || $cityId <= 0
+            || !isValidAccountPassword($password)
+            || !in_array($role, ['Cliente', 'Trabajador'], true)
+        ) {
+            flash('error', 'Revisa los datos del usuario y la contraseña antes de continuar.');
+            redirect('admin-dashboard');
+        }
+
+        if (!findCityById($cityId)) {
+            flash('error', 'Selecciona una ciudad válida.');
+            redirect('admin-dashboard');
+        }
+
+        if (fetchUserByEmail($email)) {
+            flash('error', 'El correo ya se encuentra registrado.');
+            redirect('admin-dashboard');
+        }
+
+        $documentQuery = mysqli_prepare($db, 'SELECT id FROM usuario WHERE documento_identidad = ? LIMIT 1');
+        if ($documentQuery === false) {
+            error_log('OficioClick admin user document query preparation failed: ' . mysqli_error($db));
+            flash('error', 'No se pudo validar el documento. Inténtalo nuevamente.');
+            redirect('admin-dashboard');
+        }
+        mysqli_stmt_bind_param($documentQuery, 's', $documento);
+        if (!mysqli_stmt_execute($documentQuery)) {
+            error_log('OficioClick admin user document query failed: ' . mysqli_stmt_error($documentQuery));
+            mysqli_stmt_close($documentQuery);
+            flash('error', 'No se pudo validar el documento. Inténtalo nuevamente.');
+            redirect('admin-dashboard');
+        }
+        $documentResult = mysqli_stmt_get_result($documentQuery);
+        $documentExists = $documentResult === false ? null : mysqli_fetch_assoc($documentResult);
+        mysqli_stmt_close($documentQuery);
+        if ($documentResult === false) {
+            error_log('OficioClick admin user document result failed: ' . mysqli_error($db));
+            flash('error', 'No se pudo validar el documento. Inténtalo nuevamente.');
+            redirect('admin-dashboard');
+        }
+        if ($documentExists) {
+            flash('error', 'El documento de identidad ya se encuentra registrado.');
+            redirect('admin-dashboard');
+        }
+
+        $roleQuery = mysqli_prepare($db, 'SELECT id FROM rol WHERE nombre = ? LIMIT 1');
+        if ($roleQuery === false) {
+            error_log('OficioClick admin user role query preparation failed: ' . mysqli_error($db));
+            flash('error', 'No se pudo validar el rol. Inténtalo nuevamente.');
+            redirect('admin-dashboard');
+        }
+        mysqli_stmt_bind_param($roleQuery, 's', $role);
+        if (!mysqli_stmt_execute($roleQuery)) {
+            error_log('OficioClick admin user role query failed: ' . mysqli_stmt_error($roleQuery));
+            mysqli_stmt_close($roleQuery);
+            flash('error', 'No se pudo validar el rol. Inténtalo nuevamente.');
+            redirect('admin-dashboard');
+        }
+        $roleResult = mysqli_stmt_get_result($roleQuery);
+        $roleRow = $roleResult === false ? null : mysqli_fetch_assoc($roleResult);
+        mysqli_stmt_close($roleQuery);
+        if ($roleResult === false) {
+            error_log('OficioClick admin user role result failed: ' . mysqli_error($db));
+            flash('error', 'No se pudo validar el rol. Inténtalo nuevamente.');
+            redirect('admin-dashboard');
+        }
+        if (!$roleRow) {
+            flash('error', 'No se encontró el rol solicitado.');
+            redirect('admin-dashboard');
+        }
+
+        if (!mysqli_begin_transaction($db)) {
+            flash('error', 'No se pudo iniciar la creación administrativa.');
+            redirect('admin-dashboard');
+        }
+
+        $userId = insertUserAccount(
+            $db,
+            (int) $roleRow['id'],
+            $cityId,
+            $nombre,
+            $apellido,
+            $email,
+            $telefono,
+            $documento,
+            $direccion,
+            $password,
+            $insertError
+        );
+        $created = $userId !== false
+            && logAdminAction(
+                (int) $_SESSION['user']['id'],
+                'create_user',
+                'user',
+                $userId,
+                ['role' => $role]
+            );
+        if ($created) {
+            $created = mysqli_commit($db);
+            if (!$created) {
+                error_log('OficioClick admin user transaction commit failed: ' . mysqli_error($db));
+                mysqli_rollback($db);
+            }
+        } else {
+            mysqli_rollback($db);
+        }
+
+        if (!$created) {
+            flash(
+                'error',
+                $insertError === 1062
+                    ? 'El correo o documento ya se encuentra registrado.'
+                    : 'No se pudo crear el usuario. Revisa los registros de la aplicación.'
+            );
+            redirect('admin-dashboard');
+        }
+
+        flash('success', 'Usuario creado correctamente.');
+        redirect('admin-dashboard');
+    }
+
+    if ($action === 'update-profile') {
+        requireRole(['Cliente', 'Trabajador']);
+        $userId = (int) $_SESSION['user']['id'];
+        $nombre = trim((string) ($_POST['nombre'] ?? ''));
+        $apellido = trim((string) ($_POST['apellido'] ?? ''));
+        $email = strtolower(trim((string) ($_POST['email'] ?? '')));
+        $telefono = trim((string) ($_POST['telefono'] ?? ''));
+        $documento = trim((string) ($_POST['documento_identidad'] ?? ''));
+        $direccion = trim((string) ($_POST['direccion'] ?? ''));
+        $cityId = (int) ($_POST['ciudad_id'] ?? 0);
+
+        if (
+            $nombre === ''
+            || $apellido === ''
+            || !filter_var($email, FILTER_VALIDATE_EMAIL)
+            || $telefono === ''
+            || $documento === ''
+            || $direccion === ''
+            || $cityId <= 0
+        ) {
+            flash('error', 'Completa los campos obligatorios con datos válidos.');
+            redirect('profile');
+        }
+
+        if (!findCityById($cityId)) {
+            flash('error', 'Selecciona una ciudad válida.');
+            redirect('profile');
+        }
+
+        $emailQuery = mysqli_prepare($db, 'SELECT id FROM usuario WHERE email = ? AND id <> ? LIMIT 1');
+        if ($emailQuery === false) {
+            error_log('OficioClick profile email query preparation failed: ' . mysqli_error($db));
+            flash('error', 'No se pudo validar el correo. Inténtalo nuevamente.');
+            redirect('profile');
+        }
+        mysqli_stmt_bind_param($emailQuery, 'si', $email, $userId);
+        if (!mysqli_stmt_execute($emailQuery)) {
+            error_log('OficioClick profile email query failed: ' . mysqli_stmt_error($emailQuery));
+            mysqli_stmt_close($emailQuery);
+            flash('error', 'No se pudo validar el correo. Inténtalo nuevamente.');
+            redirect('profile');
+        }
+        $emailResult = mysqli_stmt_get_result($emailQuery);
+        $emailExists = $emailResult === false ? null : mysqli_fetch_assoc($emailResult);
+        mysqli_stmt_close($emailQuery);
+        if ($emailResult === false) {
+            error_log('OficioClick profile email result failed: ' . mysqli_error($db));
+            flash('error', 'No se pudo validar el correo. Inténtalo nuevamente.');
+            redirect('profile');
+        }
+        if ($emailExists) {
+            flash('error', 'El correo ya se encuentra registrado por otra cuenta.');
+            redirect('profile');
+        }
+
+        $documentQuery = mysqli_prepare(
+            $db,
+            'SELECT id FROM usuario WHERE documento_identidad = ? AND id <> ? LIMIT 1'
+        );
+        if ($documentQuery === false) {
+            error_log('OficioClick profile document query preparation failed: ' . mysqli_error($db));
+            flash('error', 'No se pudo validar el documento. Inténtalo nuevamente.');
+            redirect('profile');
+        }
+        mysqli_stmt_bind_param($documentQuery, 'si', $documento, $userId);
+        if (!mysqli_stmt_execute($documentQuery)) {
+            error_log('OficioClick profile document query failed: ' . mysqli_stmt_error($documentQuery));
+            mysqli_stmt_close($documentQuery);
+            flash('error', 'No se pudo validar el documento. Inténtalo nuevamente.');
+            redirect('profile');
+        }
+        $documentResult = mysqli_stmt_get_result($documentQuery);
+        $documentExists = $documentResult === false ? null : mysqli_fetch_assoc($documentResult);
+        mysqli_stmt_close($documentQuery);
+        if ($documentResult === false) {
+            error_log('OficioClick profile document result failed: ' . mysqli_error($db));
+            flash('error', 'No se pudo validar el documento. Inténtalo nuevamente.');
+            redirect('profile');
+        }
+        if ($documentExists) {
+            flash('error', 'El documento de identidad ya se encuentra registrado por otra cuenta.');
+            redirect('profile');
+        }
+
+        $stmt = mysqli_prepare(
+            $db,
+            'UPDATE usuario
+             SET nombre = ?, apellido = ?, email = ?, telefono = ?, documento_identidad = ?,
+                 direccion = ?, ciudad_id = ?
+             WHERE id = ?'
+        );
+        if ($stmt === false) {
+            error_log('OficioClick profile update preparation failed: ' . mysqli_error($db));
+            flash('error', 'No se pudo preparar la actualización del perfil.');
+            redirect('profile');
+        }
+        mysqli_stmt_bind_param(
+            $stmt,
+            'ssssssii',
+            $nombre,
+            $apellido,
+            $email,
+            $telefono,
+            $documento,
+            $direccion,
+            $cityId,
+            $userId
+        );
+        $updated = mysqli_stmt_execute($stmt);
+        $updateError = mysqli_stmt_error($stmt);
+        mysqli_stmt_close($stmt);
+        if (!$updated) {
+            error_log('OficioClick profile update failed: ' . $updateError);
+            flash('error', 'No se pudo actualizar el perfil. Inténtalo nuevamente.');
+            redirect('profile');
+        }
+
+        $_SESSION['user']['name'] = $nombre;
+        $_SESSION['user']['email'] = $email;
+        session_regenerate_id(true);
+        flash('success', 'Tu perfil se actualizó correctamente.');
+        redirect('profile');
     }
 
     if ($action === 'login') {
@@ -136,7 +434,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
 
         $user = fetchUserByEmail($email);
         if (!$user || $user['estado'] !== 'activo' || !password_verify($password, $user['password_hash'])) {
-            flash('error', 'Credenciales incorrectas.');
+            flash('error', 'Credenciales inválidas.');
             redirect('login');
         }
 
@@ -987,6 +1285,17 @@ switch ($page) {
         $view = 'client-dashboard';
         $viewData['reservations'] = fetchReservationsForUser((int) $_SESSION['user']['id'], 'Cliente');
         break;
+    case 'profile':
+        requireRole(['Cliente', 'Trabajador']);
+        $profile = fetchUserProfile((int) $_SESSION['user']['id']);
+        if ($profile === null) {
+            flash('error', 'No se pudo cargar tu perfil.');
+            redirect('home');
+        }
+        $view = 'profile';
+        $viewData['profile'] = $profile;
+        $viewData['cities'] = cityOptions();
+        break;
     case 'worker-dashboard':
         requireRole(['Trabajador']);
         $view = 'worker-dashboard';
@@ -1033,6 +1342,7 @@ switch ($page) {
         $viewData['metrics'] = fetchDashboardMetrics();
         $viewData['reservationFilters'] = $adminFilters;
         $viewData['categories'] = categoryOptions();
+        $viewData['cities'] = cityOptions();
         $viewData['services'] = fetchAdminServices();
         $viewData['reviews'] = fetchAdminReviews();
         $viewData['adminActions'] = fetchAdminActions();

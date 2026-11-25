@@ -22,6 +22,7 @@
                 </div>
             </form>
 
+            <p class="inline-note">¿Olvidó su contraseña? La recuperación no está disponible en esta versión.</p>
             <p class="inline-note">¿No tienes cuenta? <a href="index.php?page=register">Regístrate aquí</a></p>
         </div>
     </div>

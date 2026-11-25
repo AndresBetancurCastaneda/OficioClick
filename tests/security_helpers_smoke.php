@@ -21,6 +21,18 @@ if (verifyCsrfToken($token . '0') || verifyCsrfToken(null) || verifyCsrfToken(['
     fwrite(STDERR, "Invalid CSRF token values must be rejected." . PHP_EOL);
     exit(1);
 }
+if (!isValidAccountPassword('Clave2026')) {
+    fwrite(STDERR, "A password with a letter, number, and sufficient length must be accepted." . PHP_EOL);
+    exit(1);
+}
+if (
+    isValidAccountPassword('Clave26')
+    || isValidAccountPassword('contraseña-larga')
+    || isValidAccountPassword('123456789')
+) {
+    fwrite(STDERR, "Weak passwords must be rejected." . PHP_EOL);
+    exit(1);
+}
 rotateCsrfToken();
 if (csrfToken() === $token) {
     fwrite(STDERR, "The CSRF token must rotate after authentication." . PHP_EOL);

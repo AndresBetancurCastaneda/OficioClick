@@ -48,6 +48,63 @@
             </div>
         </div>
 
+        <div class="panel-card">
+            <h2>Crear usuario</h2>
+            <p>Registra cuentas de Cliente o Trabajador. Para asignar un rol de Administrador, usa la gestión de usuarios.</p>
+            <form method="post" action="index.php" class="form-grid"<?php echo $formErrorDescription; ?>>
+                <input type="hidden" name="action" value="create-user">
+                <?php echo csrfField(); ?>
+                <label>
+                    Nombre
+                    <input type="text" name="nombre" required>
+                </label>
+                <label>
+                    Apellido
+                    <input type="text" name="apellido" required>
+                </label>
+                <label>
+                    Correo electrónico
+                    <input type="email" name="email" required>
+                </label>
+                <label>
+                    Teléfono
+                    <input type="tel" name="telefono" required>
+                </label>
+                <label>
+                    Documento de identidad
+                    <input type="text" name="documento_identidad" required>
+                </label>
+                <label>
+                    Dirección
+                    <input type="text" name="direccion" required>
+                </label>
+                <label>
+                    Ciudad
+                    <select name="ciudad_id" required>
+                        <option value="">Selecciona una ciudad</option>
+                        <?php foreach ($cities as $city): ?>
+                            <option value="<?php echo (int) $city['id']; ?>"><?php echo e($city['nombre']); ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                </label>
+                <label>
+                    Contraseña inicial
+                    <input type="password" name="password" minlength="8" required>
+                    <small>Debe incluir al menos una letra y un número.</small>
+                </label>
+                <label>
+                    Rol
+                    <select name="rol" required>
+                        <option value="Cliente">Cliente</option>
+                        <option value="Trabajador">Trabajador</option>
+                    </select>
+                </label>
+                <div class="form-actions full-width">
+                    <button class="btn btn-primary" type="submit">Crear cuenta</button>
+                </div>
+            </form>
+        </div>
+
         <div class="dashboard-grid">
             <div class="panel-card wide-panel">
                 <h2>Gestión de usuarios</h2>
