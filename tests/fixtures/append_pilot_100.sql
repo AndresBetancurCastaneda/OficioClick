@@ -48,7 +48,8 @@ SELECT
       WHEN 8 THEN 'Mantenimiento de tanques de agua'
       WHEN 9 THEN 'Cambio de sifones'
       WHEN 10 THEN 'Instalación de llaves de paso'
-      ELSE 'Revisión de calentadores de agua'
+      WHEN 11 THEN 'Mantenimiento de bombas de agua'
+      ELSE 'Inspección de redes de desagüe'
     END
     WHEN 1 THEN CASE FLOOR((n.n - 1) / 4)
       WHEN 0 THEN 'Instalación de lámparas y luminarias'
@@ -62,7 +63,8 @@ SELECT
       WHEN 8 THEN 'Instalación de puntos eléctricos'
       WHEN 9 THEN 'Cambio de breakers'
       WHEN 10 THEN 'Automatización de iluminación'
-      ELSE 'Diagnóstico de consumo eléctrico'
+      WHEN 11 THEN 'Instalación de sensores de movimiento'
+      ELSE 'Mantenimiento de sistemas de respaldo eléctrico'
     END
     WHEN 2 THEN CASE FLOOR((n.n - 1) / 4)
       WHEN 0 THEN 'Pintura interior de habitaciones'
@@ -76,7 +78,8 @@ SELECT
       WHEN 8 THEN 'Pintura de fachadas'
       WHEN 9 THEN 'Mantenimiento de drywall'
       WHEN 10 THEN 'Impermeabilización de paredes'
-      ELSE 'Pintura de sala y comedor'
+      WHEN 11 THEN 'Mantenimiento de enchapes y pisos'
+      ELSE 'Restauración de acabados decorativos'
     END
     ELSE CASE FLOOR((n.n - 1) / 4)
       WHEN 0 THEN 'Limpieza profunda de apartamentos'
@@ -90,6 +93,7 @@ SELECT
       WHEN 8 THEN 'Limpieza de oficina'
       WHEN 9 THEN 'Limpieza y mantenimiento de pisos'
       WHEN 10 THEN 'Limpieza de nevera y horno'
+      WHEN 11 THEN 'Limpieza de patios y terrazas'
       ELSE 'Organización y aseo del hogar'
     END
   END,
@@ -303,7 +307,12 @@ INNER JOIN usuario clients
 INNER JOIN (
   SELECT s.id, ROW_NUMBER() OVER (ORDER BY s.id) AS row_num
   FROM servicio s
-) services ON services.row_num = MOD(n.n - 1, 50) + 1
+  WHERE NOT EXISTS (
+    SELECT 1
+    FROM reserva existing
+    WHERE existing.servicio_id = s.id
+  )
+) services ON services.row_num = n.n
 WHERE n.n <= @new_reservations
   AND NOT EXISTS (
     SELECT 1

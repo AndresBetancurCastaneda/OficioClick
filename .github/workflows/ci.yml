@@ -59,6 +59,10 @@ jobs:
       - name: P0/P1 smoke
         run: docker compose exec -T web php /var/www/html/tests/p0_p1_smoke.php
 
+      - name: Disposable backup and restore
+        shell: pwsh
+        run: ./scripts/qa_backup_restore.ps1 -DatabaseName oficioclick_backup_restore_ci
+
       - name: Verify HTTP
         run: |
           curl --fail --retry 10 --retry-delay 2 http://localhost:8080/
