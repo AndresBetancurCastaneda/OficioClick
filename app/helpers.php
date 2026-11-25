@@ -102,6 +102,13 @@ function verifyCsrfToken(mixed $submittedToken): bool
         && hash_equals($sessionToken, $submittedToken);
 }
 
+function isValidAccountPassword(string $password): bool
+{
+    return strlen($password) >= 8
+        && preg_match('/[A-Za-z]/', $password) === 1
+        && preg_match('/\d/', $password) === 1;
+}
+
 function currentUser(): ?array
 {
     if (!isLoggedIn()) {
@@ -255,6 +262,98 @@ function findCityById(int $cityId): bool
     mysqli_stmt_close($stmt);
 
     return $exists;
+}
+
+function fetchUserProfile(int $userId): ?array
+{
+    $db = dbConnection();
+    if ($db === null) {
+        return null;
+    }
+
+    $stmt = mysqli_prepare(
+        $db,
+        'SELECT id, ciudad_id, nombre, apellido, email, telefono, documento_identidad, direccion
+         FROM usuario
+         WHERE id = ?
+         LIMIT 1'
+    );
+    if ($stmt === false) {
+        error_log('OficioClick profile query preparation failed: ' . mysqli_error($db));
+        return null;
+    }
+
+    mysqli_stmt_bind_param($stmt, 'i', $userId);
+    if (!mysqli_stmt_execute($stmt)) {
+        error_log('OficioClick profile query failed: ' . mysqli_stmt_error($stmt));
+        mysqli_stmt_close($stmt);
+        return null;
+    }
+
+    $result = mysqli_stmt_get_result($stmt);
+    if ($result === false) {
+        error_log('OficioClick profile result retrieval failed: ' . mysqli_error($db));
+        mysqli_stmt_close($stmt);
+        return null;
+    }
+
+    $profile = mysqli_fetch_assoc($result);
+    mysqli_stmt_close($stmt);
+
+    return $profile ?: null;
+}
+
+function insertUserAccount(
+    mysqli $db,
+    int $roleId,
+    int $cityId,
+    string $name,
+    string $lastName,
+    string $email,
+    string $phone,
+    string $document,
+    string $address,
+    string $password,
+    ?int &$errorCode = null
+): int|false {
+    $errorCode = 0;
+    $passwordHash = password_hash($password, PASSWORD_DEFAULT);
+    $stmt = mysqli_prepare(
+        $db,
+        'INSERT INTO usuario
+            (rol_id, ciudad_id, nombre, apellido, email, telefono, documento_identidad, direccion, password_hash, estado)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, "activo")'
+    );
+    if ($stmt === false) {
+        $errorCode = mysqli_errno($db);
+        error_log('OficioClick user insert preparation failed: ' . mysqli_error($db));
+        return false;
+    }
+
+    mysqli_stmt_bind_param(
+        $stmt,
+        'iisssssss',
+        $roleId,
+        $cityId,
+        $name,
+        $lastName,
+        $email,
+        $phone,
+        $document,
+        $address,
+        $passwordHash
+    );
+    if (!mysqli_stmt_execute($stmt)) {
+        $errorCode = mysqli_stmt_errno($stmt);
+        error_log('OficioClick user insert failed: ' . mysqli_stmt_error($stmt));
+        mysqli_stmt_close($stmt);
+        return false;
+    }
+
+    $userId = mysqli_insert_id($db);
+    mysqli_stmt_close($stmt);
+
+    return $userId;
 }
 
 function normalizeCategoryName(string $value): string

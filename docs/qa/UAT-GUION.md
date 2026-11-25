@@ -28,9 +28,10 @@ Validar con participantes controlados los flujos reales del MVP. Las cuentas fic
 6. Confirmación de reserva por trabajador.
 7. Finalización de reserva.
 8. Calificación 1–5.
-9. Gestión administrativa de usuario.
-10. Filtros de reservas y exportación de reporte CSV.
-11. Uso móvil y navegación por teclado, incluido el menú y la visualización completa de los filtros.
+9. Actualización del perfil propio por Cliente y Trabajador; comprobar correo y documento duplicados.
+10. Creación administrativa de una cuenta Cliente/Trabajador y verificación de la entrada de auditoría.
+11. Gestión administrativa de rol/estado, filtros de reservas y exportación de reporte CSV.
+12. Uso móvil y navegación por teclado, incluido el menú y la visualización completa de los filtros.
 
 ## Evidencia mínima
 

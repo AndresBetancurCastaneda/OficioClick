@@ -59,5 +59,14 @@ verify(isset($metrics['users_total'], $metrics['active_services'], $metrics['res
 verify(is_array(fetchAdminServices()), 'Admin service management query must return a list.');
 verify(is_array(fetchAdminReviews()), 'Admin review moderation query must return a list.');
 verify(is_array(fetchAdminActions()), 'Admin audit query must return a list.');
+$users = fetchUsersTable();
+verify(count($users) > 0, 'At least one account must be available to administer.');
+$profile = fetchUserProfile((int) $users[0]['id']);
+verify(
+    $profile !== null
+        && array_key_exists('email', $profile)
+        && array_key_exists('ciudad_id', $profile),
+    'Profile details must be retrievable for an existing account, including an optional city.'
+);
 
 fwrite(STDOUT, "Requirement smoke checks passed." . PHP_EOL);
